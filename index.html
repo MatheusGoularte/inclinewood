@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InclinaWood - Simulador de Impacto da Inclinação na Polpação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F8F5;
+    --panel:#FFFFFF;
+    --border:#E4E8E1;
+    --border-strong:#D3D9CE;
+    --ink:#1F2A22;
+    --ink-soft:#5B6B5E;
+    --brand:#2B4A33;
+    --brand-soft:#DCE6DE;
+    --amber:#B8672E;
+    --amber-soft:#F4E1D2;
+    --blue:#4A6C8C;
+    --blue-soft:#DDE6EC;
+    --ok:#3D8B5F;
+    --warn:#D4A72C;
+    --bad:#C0453A;
+    --shadow: 0 1px 2px rgba(31,42,34,0.04), 0 4px 16px rgba(31,42,34,0.05);
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      /* Intentionally keep this tool in its light, print-report register regardless of system theme */
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  h1,h2,h3{
+    font-family:'Fraunces', Georgia, serif;
+    font-weight:600;
+    color:var(--ink);
+    margin:0;
+  }
+  .app{
+    display:grid;
+    grid-template-columns:300px 1fr;
+    min-height:100vh;
+  }
+  @media (max-width: 900px){
+    .app{ grid-template-columns:1fr; }
+    .sidebar{ position:relative; height:auto; }
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    background:var(--panel);
+    border-right:1px solid var(--border);
+    padding:28px 22px;
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+    position:sticky;
+    top:0;
+    height:100vh;
+    overflow-y:auto;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:4px;
+  }
+  .brand-mark{
+    width:34px;height:34px;
+    border-radius:8px;
+    background:var(--brand);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .brand-mark svg{ width:19px;height:19px; }
+  .brand-text{ line-height:1.15; }
+  .brand-text .name{ font-family:'Fraunces',serif; font-weight:600; font-size:16.5px; color:var(--ink); }
+  .brand-text .tag{ font-size:11px; color:var(--ink-soft); }
+
+  .field-group{ display:flex; flex-direction:column; gap:6px; }
+  .field-label{
+    font-size:11.5px;
+    color:var(--ink-soft);
+    font-weight:500;
+  }
+  select, .file-btn{
+    width:100%;
+    padding:9px 10px;
+    border-radius:8px;
+    border:1px solid var(--border-strong);
+    background:#fff;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13.5px;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  select:focus, .file-btn:focus, input:focus, button:focus{
+    outline:2px solid var(--brand);
+    outline-offset:1px;
+  }
+
+  .tabs{
+    display:flex;
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:9px;
+    padding:3px;
+    gap:2px;
+  }
+  .tab{
+    flex:1;
+    text-align:center;
+    padding:7px 6px;
+    font-size:12.5px;
+    font-weight:500;
+    color:var(--ink-soft);
+    border-radius:6px;
+    cursor:pointer;
+    border:none;
+    background:transparent;
+    font-family:'IBM Plex Sans', sans-serif;
+  }
+  .tab.active{
+    background:var(--panel);
+    color:var(--brand);
+    box-shadow:var(--shadow);
+  }
+
+  .upload-zone{
+    border:1.5px dashed var(--border-strong);
+    border-radius:10px;
+    padding:16px 10px;
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-soft);
+    cursor:pointer;
+    background:var(--bg);
+  }
+  .upload-zone:hover{ border-color:var(--brand); color:var(--brand); }
+  #csvInput{ display:none; }
+  .csv-status{ font-size:11.5px; color:var(--brand); }
+
+  .slider-block{ display:flex; flex-direction:column; gap:10px; }
+  .slider-value-row{ display:flex; align-items:baseline; justify-content:space-between; }
+  .slider-value{ font-family:'Fraunces', serif; font-size:26px; font-weight:600; color:var(--brand); }
+  .slider-value sup{ font-size:14px; font-weight:500; }
+  input[type=range]{
+    -webkit-appearance:none;
+    width:100%;
+    height:5px;
+    border-radius:4px;
+    background:linear-gradient(to right, var(--brand), var(--amber));
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:18px;height:18px;
+    border-radius:50%;
+    background:#fff;
+    border:3px solid var(--brand);
+    cursor:pointer;
+    box-shadow:0 1px 3px rgba(0,0,0,0.25);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:18px;height:18px;
+    border-radius:50%;
+    background:#fff;
+    border:3px solid var(--brand);
+    cursor:pointer;
+  }
+  .slider-scale{
+    display:flex; justify-content:space-between;
+    font-size:10.5px; color:var(--ink-soft);
+    font-family:'IBM Plex Mono', monospace;
+  }
+
+  .tree-diagram{ display:flex; justify-content:center; padding:6px 0 2px; }
+
+  .num-inputs{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .num-inputs .field-group{ grid-column:span 1; }
+  input[type=text], input[type=number]{
+    width:100%;
+    padding:8px 9px;
+    border-radius:8px;
+    border:1px solid var(--border-strong);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:var(--ink);
+  }
+
+  .btn-primary{
+    width:100%;
+    padding:11px;
+    border-radius:9px;
+    border:none;
+    background:var(--brand);
+    color:#fff;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:13.5px;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .btn-primary:hover{ background:#23392A; }
+
+  .confidence-note{
+    font-size:11px;
+    color:var(--ink-soft);
+    line-height:1.5;
+    border-top:1px solid var(--border);
+    padding-top:14px;
+  }
+
+  /* ---------- Main ---------- */
+  main{ padding:28px 32px 60px; }
+  .topbar{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    margin-bottom:22px; gap:16px; flex-wrap:wrap;
+  }
+  .topbar h1{ font-size:23px; }
+  .topbar .sub{ color:var(--ink-soft); font-size:13.5px; margin-top:4px; max-width:520px; }
+  .confidence-badge{
+    display:inline-flex; align-items:center; gap:7px;
+    background:var(--amber-soft);
+    color:var(--amber);
+    border:1px solid #E7C6AA;
+    padding:7px 13px;
+    border-radius:20px;
+    font-size:12px;
+    font-weight:500;
+    white-space:nowrap;
+  }
+  .confidence-badge .dot{ width:7px;height:7px;border-radius:50%; background:var(--amber); }
+  .confidence-badge.calibrated{ background:var(--brand-soft); color:var(--brand); border-color:#BFD4C4; }
+  .confidence-badge.calibrated .dot{ background:var(--brand); }
+
+  .hero-row{
+    display:grid;
+    grid-template-columns:1.4fr 1fr;
+    gap:16px;
+    margin-bottom:18px;
+  }
+  @media (max-width:1100px){ .hero-row{ grid-template-columns:1fr; } }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:18px 20px;
+  }
+  .panel-title{
+    font-size:12px;
+    text-transform:none;
+    color:var(--ink-soft);
+    font-weight:500;
+    margin-bottom:12px;
+  }
+
+  .compare-diagram{ display:flex; align-items:flex-end; justify-content:space-around; height:190px; }
+  .compare-item{ text-align:center; flex:1; }
+  .compare-item .cap{ font-size:11.5px; color:var(--ink-soft); margin-top:8px; }
+
+  .metrics-row{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+    margin-bottom:18px;
+  }
+  @media (max-width:1100px){ .metrics-row{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:560px){ .metrics-row{ grid-template-columns:1fr; } }
+
+  .metric-card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:17px 18px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .metric-label{ font-size:12px; color:var(--ink-soft); font-weight:500; }
+  .metric-value{ font-family:'Fraunces',serif; font-size:29px; font-weight:600; color:var(--ink); }
+  .metric-value .unit{ font-size:15px; font-weight:500; color:var(--ink-soft); }
+  .metric-range{ font-size:11.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; }
+  .metric-bar-track{ height:6px; background:var(--bg); border-radius:4px; overflow:hidden; margin-top:2px; }
+  .metric-bar-fill{ height:100%; border-radius:4px; transition:width .25s ease; }
+
+  .risk-card{ position:relative; overflow:hidden; }
+  .risk-flag{
+    display:inline-block;
+    padding:4px 10px;
+    border-radius:6px;
+    font-size:12.5px;
+    font-weight:600;
+    margin-top:2px;
+    width:fit-content;
+  }
+
+  .lower-row{
+    display:grid;
+    grid-template-columns:1.3fr 1fr;
+    gap:16px;
+  }
+  @media (max-width:1100px){ .lower-row{ grid-template-columns:1fr; } }
+
+  .chart-wrap{ position:relative; height:220px; }
+  svg text{ font-family:'IBM Plex Mono', monospace; }
+
+  table.rank-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  table.rank-table th{
+    text-align:left; font-weight:500; color:var(--ink-soft);
+    padding:6px 8px; border-bottom:1px solid var(--border); font-size:11px;
+  }
+  table.rank-table td{ padding:8px 8px; border-bottom:1px solid var(--border); }
+  table.rank-table tr:last-child td{ border-bottom:none; }
+  .pill{ display:inline-block; width:9px;height:9px;border-radius:50%; margin-right:6px; }
+
+  .footnote{
+    margin-top:22px;
+    font-size:11.5px;
+    color:var(--ink-soft);
+    border-top:1px solid var(--border);
+    padding-top:14px;
+    line-height:1.6;
+  }
+
+  /* ---------- Nav switcher ---------- */
+  .nav-switch{ display:flex; flex-direction:column; gap:3px; margin-bottom:2px; }
+  .nav-item{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 11px;
+    border-radius:9px;
+    font-size:13px; font-weight:500;
+    color:var(--ink-soft);
+    cursor:pointer;
+    border:none; background:transparent;
+    font-family:'IBM Plex Sans', sans-serif;
+    text-align:left;
+  }
+  .nav-item svg{ width:16px;height:16px; flex-shrink:0; }
+  .nav-item.active{ background:var(--brand-soft); color:var(--brand); }
+  .nav-item:hover:not(.active){ background:var(--bg); }
+
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* ---------- Amostragem view ---------- */
+  .breadcrumb-row{
+    display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .breadcrumb-field{ display:flex; flex-direction:column; gap:5px; min-width:180px; flex:1; }
+  .breadcrumb-field label{ font-size:11.5px; color:var(--ink-soft); font-weight:500; }
+  .inline-new{ display:flex; gap:6px; }
+  .inline-new input{ flex:1; }
+  .btn-small{
+    padding:8px 12px; border-radius:8px; border:1px solid var(--border-strong);
+    background:#fff; font-size:12.5px; font-weight:500; color:var(--brand);
+    cursor:pointer; white-space:nowrap;
+  }
+  .btn-small:hover{ background:var(--brand-soft); }
+
+  .tree-form{
+    display:grid;
+    grid-template-columns:repeat(5,1fr) auto;
+    gap:10px;
+    align-items:end;
+    margin-bottom:14px;
+  }
+  @media (max-width:900px){ .tree-form{ grid-template-columns:repeat(2,1fr); } }
+  .tree-form .field-group label{ font-size:11px; }
+
+  .stat-strip{
+    display:flex; gap:14px; margin-bottom:16px; flex-wrap:wrap;
+  }
+  .stat-chip{
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px 16px;
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .stat-chip .v{ font-family:'Fraunces',serif; font-size:20px; font-weight:600; color:var(--brand); }
+  .stat-chip .l{ font-size:11px; color:var(--ink-soft); }
+
+  table.entry-table{ width:100%; border-collapse:collapse; font-size:13px; margin-bottom:16px; }
+  table.entry-table th{ text-align:left; font-size:11px; font-weight:500; color:var(--ink-soft); padding:6px 8px; border-bottom:1px solid var(--border); }
+  table.entry-table td{ padding:7px 8px; border-bottom:1px solid var(--border); }
+  .cat-tag{ font-size:11px; font-weight:600; padding:2px 8px; border-radius:6px; }
+  .cat-SI{ background:#DCEEE3; color:var(--ok); }
+  .cat-IM{ background:#F7EBC9; color:#96770F; }
+  .cat-IS{ background:#F5DBD8; color:var(--bad); }
+  .row-del{ color:var(--ink-soft); cursor:pointer; font-size:12px; background:none; border:none; }
+  .row-del:hover{ color:var(--bad); }
+
+  /* ---------- Banco view ---------- */
+  .clone-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    box-shadow:var(--shadow); padding:18px 20px; margin-bottom:14px;
+  }
+  .clone-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
+  .clone-head h3{ font-size:17px; }
+  .clone-meta{ font-size:12px; color:var(--ink-soft); }
+  .coverage-row{ display:flex; gap:8px; margin-top:8px; }
+  .coverage-pill{ flex:1; border-radius:8px; padding:8px 10px; text-align:center; font-size:12px; }
+  .coverage-pill .n{ font-family:'Fraunces',serif; font-size:18px; font-weight:600; display:block; }
+  .empty-state{ text-align:center; color:var(--ink-soft); padding:30px 10px; font-size:13px; }
+
+  /* ---------- Print report ---------- */
+  #printReport{ display:none; }
+  @media print{
+    body *{ visibility:hidden; }
+    #printReport, #printReport *{ visibility:visible; }
+    #printReport{ display:block; position:absolute; top:0; left:0; width:100%; padding:30px; }
+    .app{ display:none; }
+  }
+  #printReport h2{ font-size:20px; margin-bottom:4px; }
+  #printReport .pr-meta{ font-size:12px; color:var(--ink-soft); margin-bottom:18px; }
+  #printReport table{ width:100%; border-collapse:collapse; margin-bottom:18px; font-size:13px; }
+  #printReport th, #printReport td{ border:1px solid #ccc; padding:6px 10px; text-align:left; }
+  #printReport .pr-logo{ height:26px; margin-bottom:10px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L4 14h5v8h6v-8h5L12 2z" fill="#fff"/></svg>
+      </div>
+      <div class="brand-text">
+        <div class="name">InclinaWood</div>
+        <div class="tag">Simulador de decisão de colheita</div>
+      </div>
+    </div>
+
+    <div class="nav-switch" role="tablist">
+      <button class="nav-item active" data-view="painel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Painel de decisão
+      </button>
+      <button class="nav-item" data-view="amostragem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v7M12 9l-4 11h8L12 9z"/></svg>
+        Amostragem em campo
+      </button>
+      <button class="nav-item" data-view="banco">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
+        Banco de calibração
+      </button>
+    </div>
+
+    <div id="sidebarPainelExtra">
+    <div class="tabs" role="tablist">
+      <button class="tab active" id="tabManual" role="tab">Entrada manual</button>
+      <button class="tab" id="tabUpload" role="tab">Importar planilha</button>
+    </div>
+
+    <div id="manualPanel">
+      <div class="field-group">
+        <label class="field-label" for="cloneSelect">Clone / material genético</label>
+        <select id="cloneSelect">
+          <option value="pedro" selected>E. saligna - clone ref. (Pedro Kolton)</option>
+          <option value="generic">Clone não calibrado (estimativa genérica)</option>
+        </select>
+      </div>
+
+      <div class="field-group" style="margin-top:14px;">
+        <label class="field-label" for="plotName">Identificação do talhão</label>
+        <input type="text" id="plotName" value="Talhão 14-B">
+      </div>
+
+      <div class="num-inputs" style="margin-top:14px;">
+        <div class="field-group">
+          <label class="field-label" for="idade">Idade (anos)</label>
+          <input type="number" id="idade" value="8" min="1" max="30">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="dap">DAP (cm)</label>
+          <input type="number" id="dap" value="18" min="1" max="80">
+        </div>
+      </div>
+
+      <div class="slider-block" style="margin-top:18px;">
+        <label class="field-label">Ângulo de inclinação do fuste</label>
+        <div class="slider-value-row">
+          <div class="slider-value" id="angleValue">14<sup>°</sup></div>
+        </div>
+        <input type="range" id="angleSlider" min="0" max="30" step="1" value="14">
+        <div class="slider-scale"><span>0°</span><span>15°</span><span>30°</span></div>
+      </div>
+
+      <div class="tree-diagram">
+        <svg width="150" height="110" viewBox="0 0 150 110">
+          <line x1="30" y1="95" x2="130" y2="95" stroke="#D3D9CE" stroke-width="1.5"/>
+          <line x1="30" y1="95" x2="30" y2="20" stroke="#B8B8B8" stroke-width="1" stroke-dasharray="3,3"/>
+          <g id="treeGroup" transform-origin="30px 95px">
+            <line x1="30" y1="95" x2="30" y2="18" stroke="#2B4A33" stroke-width="6" stroke-linecap="round" id="treeTrunk"/>
+          </g>
+          <path id="angleArc" d="" fill="none" stroke="#B8672E" stroke-width="1.5"/>
+          <text id="angleLabel" x="40" y="80" font-size="11" fill="#B8672E" font-family="IBM Plex Mono"></text>
+        </svg>
+      </div>
+    </div>
+
+    <div id="uploadPanel" style="display:none;">
+      <div class="field-group">
+        <label class="field-label">Planilha de inventário (.csv)</label>
+        <div class="upload-zone" id="dropZone">
+          Clique para carregar CSV<br>
+          <span style="font-size:11px;">colunas: talhão, clone, inclinação, idade, dap</span>
+        </div>
+        <input type="file" id="csvInput" accept=".csv">
+        <div class="csv-status" id="csvStatus"></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="recalcBtn">Recalcular estimativas</button>
+
+    <div class="confidence-note">
+      As curvas deste protótipo usam os dados reais do clone 32864 (dissertação de Pedro Kolton, <em>E. saligna</em>) calibrados em 3 faixas de inclinação. Precisão aumenta conforme mais clones/sítios forem calibrados.
+    </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+
+  <div class="view active" id="view-painel">
+    <div class="topbar">
+      <div>
+        <div style="display:flex; align-items:center; gap:14px; margin-bottom:6px;">
+          <h1 style="margin:0;">Painel de decisão - inclinação × qualidade de polpação</h1>
+        </div>
+        <div class="sub">Estimativa de densidade, kappa e rendimento a partir do ângulo de inclinação do fuste, sem necessidade de nova amostragem química.</div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
+        <img src="data:image/png;base64,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" alt="CMPC" style="height:30px; width:auto;">
+        <div class="confidence-badge" id="confidenceBadge">
+        <span class="dot"></span>
+        <span id="confidenceText">Estimativa - clone parcialmente calibrado</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-row">
+      <div class="panel">
+        <div class="panel-title">Lenho normal vs. lenho de tração no fuste inclinado</div>
+        <div class="compare-diagram">
+          <div class="compare-item">
+            <svg width="120" height="150" viewBox="0 0 120 150">
+              <circle cx="60" cy="70" r="46" fill="#F3EBDD" stroke="#C9B48C" stroke-width="2"/>
+              <circle cx="60" cy="70" r="34" fill="none" stroke="#D8C7A2" stroke-width="2"/>
+              <circle cx="60" cy="70" r="22" fill="none" stroke="#D8C7A2" stroke-width="2"/>
+              <circle cx="60" cy="70" r="10" fill="#C9B48C"/>
+            </svg>
+            <div class="cap">Seção - lenho normal</div>
+          </div>
+          <div class="compare-item">
+            <svg width="120" height="150" viewBox="0 0 120 150">
+              <circle cx="60" cy="70" r="46" fill="#F3EBDD" stroke="#C9B48C" stroke-width="2"/>
+              <path id="tensionArc" d="" fill="#E3A874" opacity="0.85"/>
+              <circle cx="60" cy="70" r="46" fill="none" stroke="#C9B48C" stroke-width="2"/>
+              <circle cx="60" cy="70" r="34" fill="none" stroke="#D8C7A2" stroke-width="1.5" opacity="0.5"/>
+              <circle cx="60" cy="70" r="22" fill="none" stroke="#D8C7A2" stroke-width="1.5" opacity="0.5"/>
+              <circle cx="60" cy="70" r="10" fill="#C9782E"/>
+            </svg>
+            <div class="cap">Seção - <span id="twPctLabel">32</span>% lenho de tração</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Composição química estimada</div>
+        <div class="chart-wrap">
+          <svg width="100%" height="100%" viewBox="0 0 260 200" preserveAspectRatio="xMidYMid meet">
+            <!-- Lignin bar -->
+            <text x="10" y="30" font-size="11" fill="#5B6B5E">Lignina</text>
+            <rect x="10" y="38" width="240" height="14" rx="4" fill="#E4E8E1"/>
+            <rect id="ligninBar" x="10" y="38" width="150" height="14" rx="4" fill="#4A6C8C"/>
+            <text id="ligninVal" x="255" y="49" font-size="11" fill="#1F2A22" text-anchor="end"></text>
+
+            <text x="10" y="85" font-size="11" fill="#5B6B5E">Celulose</text>
+            <rect x="10" y="93" width="240" height="14" rx="4" fill="#E4E8E1"/>
+            <rect id="celluloseBar" x="10" y="93" width="150" height="14" rx="4" fill="#2B4A33"/>
+            <text id="celluloseVal" x="255" y="104" font-size="11" fill="#1F2A22" text-anchor="end"></text>
+
+            <text x="10" y="140" font-size="11" fill="#5B6B5E">Hemicelulose</text>
+            <rect x="10" y="148" width="240" height="14" rx="4" fill="#E4E8E1"/>
+            <rect id="hemiBar" x="10" y="148" width="150" height="14" rx="4" fill="#B8672E"/>
+            <text id="hemiVal" x="255" y="159" font-size="11" fill="#1F2A22" text-anchor="end"></text>
+
+            <text x="10" y="190" font-size="10" fill="#5B6B5E">% em relação à massa seca</text>
+          </svg>
+        </div>
+        <div style="font-size:11px; color:var(--ink-soft); margin-top:2px;">Lignina medida em laboratório; celulose/hemicelulose estimadas por diferença (holocelulose não fracionada nesta base).</div>
+      </div>
+    </div>
+
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">Densidade ponderada</div>
+        <div class="metric-value" id="densityVal">- <span class="unit">kg/m³</span></div>
+        <div class="metric-range" id="densityRange"></div>
+        <div class="metric-bar-track"><div class="metric-bar-fill" id="densityBar" style="background:var(--blue);"></div></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Kappa number esperado</div>
+        <div class="metric-value" id="kappaVal">- </div>
+        <div class="metric-range" id="kappaRange"></div>
+        <div class="metric-bar-track"><div class="metric-bar-fill" id="kappaBar" style="background:var(--amber);"></div></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Rendimento de celulose</div>
+        <div class="metric-value" id="yieldVal">- <span class="unit">%</span></div>
+        <div class="metric-range" id="yieldRange"></div>
+        <div class="metric-bar-track"><div class="metric-bar-fill" id="yieldBar" style="background:var(--brand);"></div></div>
+      </div>
+      <div class="metric-card risk-card">
+        <div class="metric-label">Risco de heterogeneidade</div>
+        <div class="risk-flag" id="riskFlag">-</div>
+        <div class="metric-range" id="riskNote" style="margin-top:4px;"></div>
+      </div>
+    </div>
+
+    <div class="lower-row">
+      <div class="panel">
+        <div class="panel-title">Curva de calibração - inclinação × kappa (clone de referência)</div>
+        <div class="chart-wrap">
+          <svg width="100%" height="100%" viewBox="0 0 520 220" preserveAspectRatio="xMidYMid meet" id="curveSvg">
+            <!-- axes -->
+            <line x1="40" y1="10" x2="40" y2="190" stroke="#D3D9CE" stroke-width="1"/>
+            <line x1="40" y1="190" x2="500" y2="190" stroke="#D3D9CE" stroke-width="1"/>
+            <text x="10" y="15" font-size="10" fill="#5B6B5E">Kappa</text>
+            <text x="470" y="208" font-size="10" fill="#5B6B5E">Inclinação (°)</text>
+            <path id="calibCurve" d="" fill="none" stroke="#4A6C8C" stroke-width="2"/>
+            <g id="calibPoints"></g>
+            <line id="currentAngleLine" x1="0" y1="10" x2="0" y2="190" stroke="#B8672E" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <circle id="currentAnglePoint" r="5" fill="#B8672E"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Priorização de colheita (talhões carregados)</div>
+        <table class="rank-table" id="rankTable">
+          <thead><tr><th>Talhão</th><th>Inclin.</th><th>Kappa est.</th><th>Risco</th></tr></thead>
+          <tbody id="rankBody">
+            <tr><td colspan="4" style="color:var(--ink-soft); text-align:center; padding-top:16px;">Importe uma planilha para ver o ranking de talhões</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footnote">
+      Protótipo de demonstração - coeficientes calibrados nos 3 grupos reais medidos por Pedro Kolton (clone 32864, <em>E. saligna</em>, CMPC Riograndense: SI 0°-5°, IM 5°-15°, IS &gt;15°). A curva entre grupos é interpolada; fora da faixa amostrada (θ &gt; ~25°) a estimativa é uma extrapolação e deve ser tratada com cautela.
+      <div style="margin-top:12px;">
+        <button class="btn-small" id="exportReportBtn">Exportar relatório (PDF)</button>
+        <button class="btn-small" id="exportCsvBtn" style="margin-left:8px;">Exportar dados (CSV)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW: AMOSTRAGEM EM CAMPO -->
+  <div class="view" id="view-amostragem">
+    <div class="topbar">
+      <div>
+        <h1>Amostragem em campo</h1>
+        <div class="sub">Registre árvores por talhão. A inclinação média e o número de amostras são calculados automaticamente conforme você adiciona árvores.</div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:18px;">
+      <div class="panel-title">Selecionar ou criar clone / talhão</div>
+      <div class="breadcrumb-row">
+        <div class="breadcrumb-field">
+          <label>Clone</label>
+          <select id="fieldCloneSelect"></select>
+        </div>
+        <div class="breadcrumb-field">
+          <div class="inline-new">
+            <input type="text" id="newCloneInput" placeholder="Novo clone (ex: 32864)">
+            <button class="btn-small" id="addCloneBtn">+ Clone</button>
+          </div>
+        </div>
+        <div class="breadcrumb-field">
+          <label>Talhão</label>
+          <select id="fieldTalhaoSelect"></select>
+        </div>
+        <div class="breadcrumb-field">
+          <div class="inline-new">
+            <input type="text" id="newTalhaoInput" placeholder="Novo talhão (ex: 14-B)">
+            <button class="btn-small" id="addTalhaoBtn">+ Talhão</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-strip">
+        <div class="stat-chip"><div class="v" id="statCount">0</div><div class="l">árvores amostradas</div></div>
+        <div class="stat-chip"><div class="v" id="statAvgAngle">-</div><div class="l">inclinação média</div></div>
+        <div class="stat-chip"><div class="v" id="statCategory">-</div><div class="l">categoria predominante</div></div>
+      </div>
+
+      <div class="panel-title">Adicionar árvore</div>
+      <div class="tree-form">
+        <div class="field-group"><label>ID árvore</label><input type="text" id="treeId" placeholder="ex: 001"></div>
+        <div class="field-group"><label>Inclinação (°)</label><input type="number" id="treeAngle" min="0" max="60" step="0.5"></div>
+        <div class="field-group"><label>DAP (cm)</label><input type="number" id="treeDap" min="0" step="0.1"></div>
+        <div class="field-group"><label>Altura (m)</label><input type="number" id="treeHeight" min="0" step="0.1"></div>
+        <div class="field-group"><label>Idade (anos)</label><input type="number" id="treeAge" min="0" step="1"></div>
+        <button class="btn-primary" style="width:auto; padding:9px 16px;" id="addTreeBtn">Adicionar</button>
+      </div>
+
+      <table class="entry-table">
+        <thead><tr><th>Árvore</th><th>Inclinação</th><th>Categoria</th><th>DAP</th><th>Altura</th><th>Idade</th><th></th></tr></thead>
+        <tbody id="treeTableBody">
+          <tr><td colspan="7" class="empty-state">Nenhuma árvore adicionada neste talhão ainda</td></tr>
+        </tbody>
+      </table>
+
+      <button class="btn-small" id="saveTalhaoBtn">Salvar talhão no banco de calibração</button>
+      <span id="saveStatus" style="font-size:12px; color:var(--brand); margin-left:10px;"></span>
+    </div>
+
+    <div class="footnote">
+      Os dados ficam salvos neste navegador (armazenamento local). Para uso compartilhado entre toda a equipe florestal em produção, isso deve migrar para um banco de dados central - hoje é um protótipo funcional para a demonstração.
+    </div>
+  </div>
+
+  <!-- VIEW: BANCO DE CALIBRAÇÃO -->
+  <div class="view" id="view-banco">
+    <div class="topbar">
+      <div>
+        <h1>Banco de calibração</h1>
+        <div class="sub">Cobertura de amostragem por clone - quanto mais árvores e talhões, maior a confiança das estimativas.</div>
+      </div>
+    </div>
+    <div id="bankList"></div>
+  </div>
+
+  </main>
+</div>
+
+<div id="printReport"></div>
+
+<script>
+// ---------- Calibration model - real data, clone 32864, E. saligna ----------
+// Source: Pedro Kolton's master's dissertation (Dados-Mestrado.xlsx).
+// Category thresholds: SI 0°<θ≤5° | IM 5°<θ≤15° | IS θ>15°
+// Anchor angles use each category's approximate midpoint (SI=2.5, IM=10, IS=20)
+// for piecewise-linear interpolation. n=3 trees per category.
+const REAL_ANCHORS = {
+  angle:        [2.5,   10,    20],
+  kappa:        [19.2,  23.9,  23.7],
+  density:      [486,   477,   484],
+  yieldPct:     [53.5,  48.9,  49.2],
+  rejeitos:     [0.1,   0.4,   0.2],
+  lignina:      [28.966, 29.980, 29.114],
+  extrativos:   [2.372, 2.897, 3.453],
+  cinzas:       [0.222, 0.276, 0.281]
+};
+function classifyAngle(angle){
+  if (angle <= 5) return 'SI';
+  if (angle <= 15) return 'IM';
+  return 'IS';
+}
+function lerp(x, xs, ys){
+  if (x <= xs[0]) return ys[0] - (xs[0]-x)*((ys[1]-ys[0])/(xs[1]-xs[0]))*0.3; // gentle extrapolation below
+  for (let i=0;i<xs.length-1;i++){
+    if (x >= xs[i] && x <= xs[i+1]){
+      const t = (x-xs[i])/(xs[i+1]-xs[i]);
+      return ys[i] + t*(ys[i+1]-ys[i]);
+    }
+  }
+  // extrapolate beyond last anchor using last segment slope, damped
+  const n = xs.length;
+  const slope = (ys[n-1]-ys[n-2])/(xs[n-1]-xs[n-2]);
+  return ys[n-1] + slope*(x-xs[n-1])*0.4;
+}
+function computeEstimates(angle, clone){
+  const isCalibrated = clone === 'pedro';
+  const a = REAL_ANCHORS;
+
+  let kappa, density, yieldPct, lignin, extrativos, cinzas;
+  if (isCalibrated){
+    kappa = lerp(angle, a.angle, a.kappa);
+    density = lerp(angle, a.angle, a.density);
+    yieldPct = lerp(angle, a.angle, a.yieldPct);
+    lignin = lerp(angle, a.angle, a.lignina);
+    extrativos = lerp(angle, a.angle, a.extrativos);
+    cinzas = lerp(angle, a.angle, a.cinzas);
+  } else {
+    // generic/uncalibrated clone: same qualitative shape, wider band, no real anchor
+    const twPct = Math.min(65, angle*2.1);
+    kappa = 19 + (twPct/100)*10;
+    density = 480 + (twPct/100)*20;
+    yieldPct = 52 - (twPct/100)*4.5;
+    lignin = 29 - (twPct/100)*1.5;
+    extrativos = 2.4 + (twPct/100)*2.5;
+    cinzas = 0.22 + (twPct/100)*0.08;
+  }
+  const holocellulose = Math.max(0, 100 - lignin - extrativos - cinzas); // estimated remainder (cellulose+hemicellulose)
+  const cellulose = holocellulose*0.66; // split is an estimate - real % cellulose/hemicellulose not in dataset
+  const hemi = holocellulose*0.34;
+
+  const twPctDisplay = Math.min(70, angle*2.1); // illustrative visual-only indicator for the cross-section diagram
+
+  const rangeSpread = isCalibrated ? 0.05 : 0.18;
+  const category = classifyAngle(angle);
+
+  let riskScore = isCalibrated
+    ? (category==='SI'?0.15:category==='IM'?0.55:0.6)
+    : (category==='SI'?0.3:category==='IM'?0.6:0.75);
+  let riskLevel, riskColor;
+  if (riskScore < 0.35){ riskLevel='Baixo'; riskColor='var(--ok)'; }
+  else if (riskScore < 0.65){ riskLevel='Moderado'; riskColor='var(--warn)'; }
+  else { riskLevel='Alto'; riskColor='var(--bad)'; }
+
+  return { twPct: twPctDisplay, lignin, cellulose, hemi, density, kappa, yieldPct, rangeSpread, riskLevel, riskColor, riskScore, isCalibrated, category };
+}
+
+function fmt(n, d=1){ return n.toFixed(d); }
+
+function render(){
+  const angle = parseInt(document.getElementById('angleSlider').value, 10);
+  const clone = document.getElementById('cloneSelect').value;
+  document.getElementById('angleValue').innerHTML = angle + '<sup>°</sup>';
+
+  const r = computeEstimates(angle, clone);
+
+  // confidence badge
+  const badge = document.getElementById('confidenceBadge');
+  const badgeText = document.getElementById('confidenceText');
+  if (r.isCalibrated){
+    badge.classList.add('calibrated');
+    badgeText.textContent = 'Calibrado - clone de referência (Pedro Kolton)';
+  } else {
+    badge.classList.remove('calibrated');
+    badgeText.textContent = 'Estimativa - clone sem calibração própria';
+  }
+
+  // tree tilt
+  document.getElementById('treeGroup').setAttribute('transform', `rotate(${angle*0.9} 30 95)`);
+  // angle arc + label
+  const rad = angle*0.9*Math.PI/180;
+  const arcX = 30 + 22*Math.sin(rad);
+  const arcY = 95 - 22*Math.cos(rad);
+  document.getElementById('angleArc').setAttribute('d', `M30,73 A22,22 0 0,1 ${arcX.toFixed(1)},${arcY.toFixed(1)}`);
+  document.getElementById('angleLabel').textContent = angle + '°';
+
+  // tension wood arc in cross-section (donut segment proportional to twPct)
+  const pct = r.twPct/100;
+  const cx=60, cy=70, rad2=46;
+  const startAngle = -90;
+  const endAngle = startAngle + pct*360;
+  const toXY = (deg)=>{
+    const a = deg*Math.PI/180;
+    return [cx + rad2*Math.cos(a), cy + rad2*Math.sin(a)];
+  };
+  const [sx,sy] = toXY(startAngle);
+  const [ex,ey] = toXY(endAngle);
+  const largeArc = pct > 0.5 ? 1 : 0;
+  document.getElementById('tensionArc').setAttribute('d',
+    `M${cx},${cy} L${sx.toFixed(1)},${sy.toFixed(1)} A${rad2},${rad2} 0 ${largeArc} 1 ${ex.toFixed(1)},${ey.toFixed(1)} Z`);
+  document.getElementById('twPctLabel').textContent = Math.round(r.twPct);
+
+  // chemical composition bars (scale to 260px width area, max ~55%)
+  const scale = 240/55;
+  document.getElementById('ligninBar').setAttribute('width', Math.max(4, r.lignin*scale/1.6));
+  document.getElementById('celluloseBar').setAttribute('width', Math.max(4, r.cellulose*scale/1.9));
+  document.getElementById('hemiBar').setAttribute('width', Math.max(4, r.hemi*scale/1.2));
+  document.getElementById('ligninVal').textContent = fmt(r.lignin)+'%';
+  document.getElementById('celluloseVal').textContent = fmt(r.cellulose)+'%';
+  document.getElementById('hemiVal').textContent = fmt(r.hemi)+'%';
+
+  // metric cards
+  document.getElementById('densityVal').innerHTML = Math.round(r.density) + ' <span class="unit">kg/m³</span>';
+  document.getElementById('densityRange').textContent = `faixa: ${Math.round(r.density*(1-r.rangeSpread))}-${Math.round(r.density*(1+r.rangeSpread))} kg/m³`;
+  document.getElementById('densityBar').style.width = Math.min(100, (r.density-400)/3) + '%';
+
+  document.getElementById('kappaVal').textContent = fmt(r.kappa);
+  document.getElementById('kappaRange').textContent = `faixa: ${fmt(r.kappa*(1-r.rangeSpread))}-${fmt(r.kappa*(1+r.rangeSpread))}`;
+  document.getElementById('kappaBar').style.width = Math.min(100, (r.kappa/30)*100) + '%';
+
+  document.getElementById('yieldVal').innerHTML = fmt(r.yieldPct) + ' <span class="unit">%</span>';
+  document.getElementById('yieldRange').textContent = `faixa: ${fmt(r.yieldPct*(1-r.rangeSpread))}-${fmt(r.yieldPct*(1+r.rangeSpread))}%`;
+  document.getElementById('yieldBar').style.width = Math.min(100, (r.yieldPct/55)*100) + '%';
+
+  const riskFlag = document.getElementById('riskFlag');
+  riskFlag.textContent = r.riskLevel;
+  riskFlag.style.background = r.riskColor.replace('var(--ok)','#DCEEE3').replace('var(--warn)','#F7EBC9').replace('var(--bad)','#F5DBD8');
+  riskFlag.style.color = r.riskColor;
+  document.getElementById('riskNote').textContent = r.isCalibrated
+    ? 'baseado em dados reais do clone'
+    : 'sem dados próprios - usar com cautela';
+
+  // calibration curve
+  drawCurve(angle, r.kappa, r.isCalibrated);
+}
+
+function drawCurve(currentAngle, currentKappa, isCalibrated){
+  const w=520,h=220, padL=40, padR=20, padT=10, padB=30;
+  const maxAngle=30, minKappa=15, maxKappa=28;
+  const xScale = a => padL + (a/maxAngle)*(w-padL-padR);
+  const yScale = k => (h-padB) - ((k-minKappa)/(maxKappa-minKappa))*(h-padB-padT);
+
+  let d='';
+  const pts=[];
+  for(let a=0;a<=maxAngle;a+=1){
+    const est = computeEstimates(a,'pedro');
+    pts.push([a, est.kappa]);
+  }
+  pts.forEach(([a,k],i)=>{
+    const x=xScale(a), y=yScale(k);
+    d += (i===0?'M':'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  });
+  document.getElementById('calibCurve').setAttribute('d', d);
+
+  // real measured category points (n=3 trees each) - the only actual data anchors
+  const pointsGroup = document.getElementById('calibPoints');
+  pointsGroup.innerHTML='';
+  const labels = ['SI','IM','IS'];
+  REAL_ANCHORS.angle.forEach((a,i)=>{
+    const k = REAL_ANCHORS.kappa[i];
+    const x=xScale(a), y=yScale(k);
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 5);
+    c.setAttribute('fill', '#2B4A33');
+    c.setAttribute('stroke', '#fff'); c.setAttribute('stroke-width','1.5');
+    pointsGroup.appendChild(c);
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x', x); t.setAttribute('y', y-10);
+    t.setAttribute('font-size','10'); t.setAttribute('fill','#5B6B5E'); t.setAttribute('text-anchor','middle');
+    t.textContent = labels[i] + ' (n=3)';
+    pointsGroup.appendChild(t);
+  });
+
+  const cx = xScale(currentAngle);
+  const cy = yScale(currentKappa);
+  document.getElementById('currentAngleLine').setAttribute('x1', cx);
+  document.getElementById('currentAngleLine').setAttribute('x2', cx);
+  document.getElementById('currentAnglePoint').setAttribute('cx', cx);
+  document.getElementById('currentAnglePoint').setAttribute('cy', cy);
+  document.getElementById('currentAnglePoint').setAttribute('fill', isCalibrated ? '#B8672E' : '#8A8F86');
+}
+
+// ---------- CSV upload ----------
+function parseCSV(text){
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
+  const rows = lines.slice(1).map(line=>{
+    const cells = line.split(',').map(c=>c.trim());
+    const obj={};
+    headers.forEach((h,i)=> obj[h]=cells[i]);
+    return obj;
+  });
+  return rows;
+}
+
+function renderRankTable(rows){
+  const body = document.getElementById('rankBody');
+  if(!rows.length){
+    body.innerHTML = '<tr><td colspan="4" style="color:var(--ink-soft); text-align:center; padding-top:16px;">Nenhum talhão válido encontrado na planilha</td></tr>';
+    return;
+  }
+  const processed = rows.map(row=>{
+    const angle = parseFloat(row['inclinação'] ?? row['inclinacao'] ?? row['angulo'] ?? row['ângulo'] ?? 0);
+    const clone = (row['clone']||'').toLowerCase().includes('pedro') || (row['clone']||'').toLowerCase().includes('saligna') ? 'pedro' : 'generic';
+    const est = computeEstimates(angle, clone);
+    return {
+      talhao: row['talhão'] || row['talhao'] || row['plot'] || '-',
+      angle, kappa: est.kappa, riskLevel: est.riskLevel, riskScore: est.riskScore, riskColor: est.riskColor
+    };
+  }).sort((a,b)=> b.riskScore - a.riskScore);
+
+  body.innerHTML = processed.map(p=>{
+    return `<tr>
+      <td>${p.talhao}</td>
+      <td>${fmt(p.angle,0)}°</td>
+      <td>${fmt(p.kappa)}</td>
+      <td><span class="pill" style="background:${p.riskColor}"></span>${p.riskLevel}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('tabManual').addEventListener('click', ()=>{
+  document.getElementById('tabManual').classList.add('active');
+  document.getElementById('tabUpload').classList.remove('active');
+  document.getElementById('manualPanel').style.display='block';
+  document.getElementById('uploadPanel').style.display='none';
+});
+document.getElementById('tabUpload').addEventListener('click', ()=>{
+  document.getElementById('tabUpload').classList.add('active');
+  document.getElementById('tabManual').classList.remove('active');
+  document.getElementById('uploadPanel').style.display='block';
+  document.getElementById('manualPanel').style.display='none';
+});
+
+document.getElementById('dropZone').addEventListener('click', ()=> document.getElementById('csvInput').click());
+document.getElementById('csvInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    try{
+      const rows = parseCSV(ev.target.result);
+      document.getElementById('csvStatus').textContent = `${rows.length} talhões carregados com sucesso`;
+      renderRankTable(rows);
+    }catch(err){
+      document.getElementById('csvStatus').textContent = 'Não foi possível ler o arquivo - verifique o formato CSV';
+    }
+  };
+  reader.onerror = ()=>{
+    document.getElementById('csvStatus').textContent = 'Erro ao ler o arquivo';
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('angleSlider').addEventListener('input', render);
+document.getElementById('cloneSelect').addEventListener('change', render);
+document.getElementById('recalcBtn').addEventListener('click', render);
+
+render();
+
+// ================= VIEW SWITCHING =================
+const views = ['painel','amostragem','banco'];
+document.querySelectorAll('.nav-item').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const target = btn.getAttribute('data-view');
+    document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    views.forEach(v=> document.getElementById('view-'+v).classList.toggle('active', v===target));
+    document.getElementById('sidebarPainelExtra').style.display = (target==='painel') ? 'flex' : 'none';
+    document.getElementById('sidebarPainelExtra').style.flexDirection = 'column';
+    document.getElementById('sidebarPainelExtra').style.gap = '22px';
+    if (target==='banco') renderBank();
+  });
+});
+
+// ================= AMOSTRAGEM EM CAMPO =================
+const BANK_KEY = 'inclinawood_bank_v1';
+function loadBank(){
+  try{
+    const raw = localStorage.getItem(BANK_KEY);
+    return raw ? JSON.parse(raw) : { clones:{} };
+  }catch(e){ return { clones:{} }; }
+}
+function saveBank(){
+  try{ localStorage.setItem(BANK_KEY, JSON.stringify(bank)); }catch(e){ /* storage unavailable - proceed in-memory only */ }
+}
+let bank = loadBank();
+let currentClone = null, currentTalhao = null;
+
+function populateCloneSelect(){
+  const sel = document.getElementById('fieldCloneSelect');
+  const names = Object.keys(bank.clones);
+  sel.innerHTML = names.length ? names.map(n=>`<option value="${n}">${n}</option>`).join('') : '<option value="">- nenhum clone cadastrado -</option>';
+  if (names.length && !names.includes(currentClone)) currentClone = names[0];
+  if (names.length) sel.value = currentClone;
+}
+function populateTalhaoSelect(){
+  const sel = document.getElementById('fieldTalhaoSelect');
+  if (!currentClone || !bank.clones[currentClone]){ sel.innerHTML = '<option value="">- selecione um clone -</option>'; currentTalhao=null; return; }
+  const names = Object.keys(bank.clones[currentClone].talhoes);
+  sel.innerHTML = names.length ? names.map(n=>`<option value="${n}">${n}</option>`).join('') : '<option value="">- nenhum talhão cadastrado -</option>';
+  if (names.length && !names.includes(currentTalhao)) currentTalhao = names[0];
+  if (names.length) sel.value = currentTalhao; else currentTalhao = null;
+}
+function currentTreeList(){
+  if (currentClone && currentTalhao && bank.clones[currentClone] && bank.clones[currentClone].talhoes[currentTalhao]){
+    return bank.clones[currentClone].talhoes[currentTalhao].trees;
+  }
+  return [];
+}
+function renderTreeTable(){
+  const trees = currentTreeList();
+  const body = document.getElementById('treeTableBody');
+  if (!trees.length){
+    body.innerHTML = '<tr><td colspan="7" class="empty-state">Nenhuma árvore adicionada neste talhão ainda</td></tr>';
+    return;
+  }
+  body.innerHTML = trees.map((t,i)=>{
+    const cat = classifyAngle(t.angle);
+    return `<tr>
+      <td>${t.id || ('#'+(i+1))}</td>
+      <td>${fmt(t.angle,1)}°</td>
+      <td><span class="cat-tag cat-${cat}">${cat}</span></td>
+      <td>${t.dap ?? '-'}</td>
+      <td>${t.height ?? '-'}</td>
+      <td>${t.age ?? '-'}</td>
+      <td><button class="row-del" data-idx="${i}">remover</button></td>
+    </tr>`;
+  }).join('');
+  body.querySelectorAll('.row-del').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const idx = parseInt(b.getAttribute('data-idx'),10);
+      trees.splice(idx,1);
+      saveBank();
+      renderTreeTable();
+      updateStats();
+    });
+  });
+}
+function updateStats(){
+  const trees = currentTreeList();
+  document.getElementById('statCount').textContent = trees.length;
+  if (trees.length){
+    const avg = trees.reduce((s,t)=>s+t.angle,0)/trees.length;
+    document.getElementById('statAvgAngle').textContent = fmt(avg,1)+'°';
+    document.getElementById('statCategory').textContent = classifyAngle(avg);
+  } else {
+    document.getElementById('statAvgAngle').textContent = '-';
+    document.getElementById('statCategory').textContent = '-';
+  }
+}
+
+document.getElementById('fieldCloneSelect').addEventListener('change', (e)=>{
+  currentClone = e.target.value || null;
+  populateTalhaoSelect();
+  renderTreeTable();
+  updateStats();
+});
+document.getElementById('fieldTalhaoSelect').addEventListener('change', (e)=>{
+  currentTalhao = e.target.value || null;
+  renderTreeTable();
+  updateStats();
+});
+document.getElementById('addCloneBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('newCloneInput').value.trim();
+  if (!name) return;
+  bank.clones[name] = bank.clones[name] || { talhoes:{} };
+  currentClone = name;
+  saveBank();
+  document.getElementById('newCloneInput').value='';
+  populateCloneSelect();
+  populateTalhaoSelect();
+  renderTreeTable();
+  updateStats();
+});
+document.getElementById('addTalhaoBtn').addEventListener('click', ()=>{
+  if (!currentClone){ document.getElementById('saveStatus').textContent='Cadastre um clone primeiro'; return; }
+  const name = document.getElementById('newTalhaoInput').value.trim();
+  if (!name) return;
+  bank.clones[currentClone].talhoes[name] = bank.clones[currentClone].talhoes[name] || { trees:[] };
+  currentTalhao = name;
+  saveBank();
+  document.getElementById('newTalhaoInput').value='';
+  populateTalhaoSelect();
+  renderTreeTable();
+  updateStats();
+});
+document.getElementById('addTreeBtn').addEventListener('click', ()=>{
+  if (!currentClone || !currentTalhao){
+    document.getElementById('saveStatus').textContent = 'Selecione (ou crie) um clone e um talhão antes de adicionar árvores';
+    return;
+  }
+  const angleVal = parseFloat(document.getElementById('treeAngle').value);
+  if (isNaN(angleVal)){
+    document.getElementById('saveStatus').textContent = 'Informe o ângulo de inclinação da árvore';
+    return;
+  }
+  const tree = {
+    id: document.getElementById('treeId').value.trim(),
+    angle: angleVal,
+    dap: document.getElementById('treeDap').value ? parseFloat(document.getElementById('treeDap').value) : null,
+    height: document.getElementById('treeHeight').value ? parseFloat(document.getElementById('treeHeight').value) : null,
+    age: document.getElementById('treeAge').value ? parseFloat(document.getElementById('treeAge').value) : null
+  };
+  bank.clones[currentClone].talhoes[currentTalhao].trees.push(tree);
+  saveBank();
+  ['treeId','treeAngle','treeDap','treeHeight','treeAge'].forEach(id=> document.getElementById(id).value='');
+  document.getElementById('saveStatus').textContent = '';
+  renderTreeTable();
+  updateStats();
+});
+document.getElementById('saveTalhaoBtn').addEventListener('click', ()=>{
+  saveBank();
+  document.getElementById('saveStatus').textContent = 'Talhão salvo no banco de calibração ✓';
+  setTimeout(()=>{ document.getElementById('saveStatus').textContent=''; }, 2500);
+});
+
+populateCloneSelect();
+populateTalhaoSelect();
+renderTreeTable();
+updateStats();
+
+// ================= BANCO DE CALIBRAÇÃO =================
+function renderBank(){
+  const list = document.getElementById('bankList');
+  let html = '';
+
+  // Fixed reference entry - the real dissertation dataset (category-level, not per-tree)
+  html += `
+    <div class="clone-card">
+      <div class="clone-head">
+        <h3>Clone 32864 - <em>Eucalyptus saligna</em></h3>
+        <span class="confidence-badge calibrated"><span class="dot"></span>Calibração inicial (referência)</span>
+      </div>
+      <div class="clone-meta">Fonte: dissertação de mestrado, Pedro Kolton - CMPC Celulose Riograndense, Butiá/RS. 1 talhão de referência, 9 árvores (3 por categoria).</div>
+      <div class="coverage-row">
+        <div class="coverage-pill cat-SI"><span class="n">3</span>SI (0-5°)</div>
+        <div class="coverage-pill cat-IM"><span class="n">3</span>IM (5-15°)</div>
+        <div class="coverage-pill cat-IS"><span class="n">3</span>IS (&gt;15°)</div>
+      </div>
+    </div>`;
+
+  const cloneNames = Object.keys(bank.clones);
+  if (!cloneNames.length){
+    html += `<div class="panel"><div class="empty-state">Nenhum clone adicional cadastrado ainda - use "Amostragem em campo" para começar a registrar novos talhões e árvores.</div></div>`;
+  } else {
+    cloneNames.forEach(name=>{
+      const talhoes = bank.clones[name].talhoes;
+      const talhaoNames = Object.keys(talhoes);
+      let allTrees = [];
+      talhaoNames.forEach(t=> allTrees = allTrees.concat(talhoes[t].trees));
+      const counts = { SI:0, IM:0, IS:0 };
+      allTrees.forEach(t=> counts[classifyAngle(t.angle)]++);
+      const confidence = allTrees.length >= 6 ? 'calibrated' : '';
+      const confidenceLabel = allTrees.length >= 6 ? 'Cobertura suficiente para calibração própria' : 'Ainda usando modelo genérico/de referência';
+      html += `
+        <div class="clone-card">
+          <div class="clone-head">
+            <h3>Clone ${name}</h3>
+            <span class="confidence-badge ${confidence}"><span class="dot"></span>${confidenceLabel}</span>
+          </div>
+          <div class="clone-meta">${talhaoNames.length} talhão(ões) - ${allTrees.length} árvore(s) amostrada(s)</div>
+          <div class="coverage-row">
+            <div class="coverage-pill cat-SI"><span class="n">${counts.SI}</span>SI (0-5°)</div>
+            <div class="coverage-pill cat-IM"><span class="n">${counts.IM}</span>IM (5-15°)</div>
+            <div class="coverage-pill cat-IS"><span class="n">${counts.IS}</span>IS (&gt;15°)</div>
+          </div>
+        </div>`;
+    });
+  }
+  list.innerHTML = html;
+}
+
+// ================= EXPORT: REPORT (PRINT/PDF) & CSV =================
+const CMPC_LOGO_B64 = document.querySelector('.topbar img[alt="CMPC"]')?.src || '';
+
+function buildReportHTML(){
+  const angle = parseInt(document.getElementById('angleSlider').value, 10);
+  const clone = document.getElementById('cloneSelect').value;
+  const plot = document.getElementById('plotName').value || 'Não informado';
+  const r = computeEstimates(angle, clone);
+  const now = new Date().toLocaleString('pt-BR');
+
+  let rankRows = '';
+  document.querySelectorAll('#rankBody tr').forEach(tr=>{
+    const cells = tr.querySelectorAll('td');
+    if (cells.length === 4){
+      rankRows += `<tr>${Array.from(cells).slice(0,4).map((c,i)=> i===3 ? `<td>${c.textContent.trim()}</td>` : `<td>${c.textContent}</td>`).join('')}</tr>`;
+    }
+  });
+
+  return `
+    <img class="pr-logo" src="${CMPC_LOGO_B64}" alt="CMPC">
+    <h2>Relatório de decisão - inclinação e qualidade de polpação</h2>
+    <div class="pr-meta">Gerado em ${now} | Talhão: ${plot} | Clone: ${document.getElementById('cloneSelect').selectedOptions[0].textContent}</div>
+    <table>
+      <tr><th>Parâmetro</th><th>Valor estimado</th></tr>
+      <tr><td>Ângulo de inclinação considerado</td><td>${angle}°</td></tr>
+      <tr><td>Categoria</td><td>${r.category}</td></tr>
+      <tr><td>Densidade ponderada</td><td>${Math.round(r.density)} kg/m³</td></tr>
+      <tr><td>Kappa number esperado</td><td>${fmt(r.kappa)}</td></tr>
+      <tr><td>Rendimento de celulose</td><td>${fmt(r.yieldPct)}%</td></tr>
+      <tr><td>Lignina total</td><td>${fmt(r.lignin)}%</td></tr>
+      <tr><td>Risco de heterogeneidade</td><td>${r.riskLevel}</td></tr>
+      <tr><td>Base do modelo</td><td>${r.isCalibrated ? 'Calibrado (clone 32864, dissertação Pedro Kolton)' : 'Estimativa genérica (clone não calibrado)'}</td></tr>
+    </table>
+    ${rankRows ? `<h2 style="font-size:16px;">Priorização de talhões carregados</h2>
+    <table><tr><th>Talhão</th><th>Inclinação</th><th>Kappa est.</th><th>Risco</th></tr>${rankRows}</table>` : ''}
+    <div class="pr-meta">Protótipo de demonstração - InclinaWood (UFPel). Coeficientes calibrados nos dados reais do clone 32864 (SI/IM/IS); resultados fora dessa faixa são extrapolados.</div>
+  `;
+}
+
+document.getElementById('exportReportBtn').addEventListener('click', ()=>{
+  document.getElementById('printReport').innerHTML = buildReportHTML();
+  window.print();
+});
+
+function buildCsvFromEstimate(){
+  const angle = parseInt(document.getElementById('angleSlider').value, 10);
+  const clone = document.getElementById('cloneSelect').value;
+  const plot = document.getElementById('plotName').value || 'talhao';
+  const r = computeEstimates(angle, clone);
+  const header = 'talhao,inclinacao,categoria,densidade_kg_m3,kappa,rendimento_pct,lignina_pct,risco\n';
+  const row = `${plot},${angle},${r.category},${Math.round(r.density)},${fmt(r.kappa)},${fmt(r.yieldPct)},${fmt(r.lignin)},${r.riskLevel}\n`;
+  return header + row;
+}
+
+async function triggerDownload(filename, textContent){
+  // Try the claude.ai downloads capability first (works inside the published artifact preview)
+  try{
+    if (window.claude && typeof window.claude.use === 'function'){
+      const downloads = await window.claude.use('downloads');
+      if (downloads){
+        await downloads.save({ filename, data: textContent });
+        return;
+      }
+    }
+  }catch(e){ /* fall through to standard browser download */ }
+
+  // Standard browser download (works when hosted normally, e.g. GitHub Pages)
+  try{
+    const blob = new Blob([textContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){
+    alert('Não foi possível baixar o arquivo neste ambiente.');
+  }
+}
+
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+  const csv = buildCsvFromEstimate();
+  triggerDownload('inclinawood_estimativa.csv', csv);
+});
+</script>
+</body>
+</html>
