@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InclinaWood - Simulador de Impacto da Inclinação na Polpação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F8F5;
+    --panel:#FFFFFF;
+    --border:#E4E8E1;
+    --border-strong:#D3D9CE;
+    --ink:#1F2A22;
+    --ink-soft:#5B6B5E;
+    --brand:#2B4A33;
+    --brand-soft:#DCE6DE;
+    --amber:#B8672E;
+    --amber-soft:#F4E1D2;
+    --blue:#4A6C8C;
+    --blue-soft:#DDE6EC;
+    --ok:#3D8B5F;
+    --warn:#D4A72C;
+    --bad:#C0453A;
+    --shadow: 0 1px 2px rgba(31,42,34,0.04), 0 4px 16px rgba(31,42,34,0.05);
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      /* Intentionally keep this tool in its light, print-report register regardless of system theme */
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  h1,h2,h3{
+    font-family:'Fraunces', Georgia, serif;
+    font-weight:600;
+    color:var(--ink);
+    margin:0;
+  }
+  .app{
+    display:grid;
+    grid-template-columns:300px 1fr;
+    min-height:100vh;
+  }
+  @media (max-width: 900px){
+    .app{ grid-template-columns:1fr; }
+    .sidebar{ position:relative; height:auto; }
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    background:var(--panel);
+    border-right:1px solid var(--border);
+    padding:28px 22px;
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+    position:sticky;
+    top:0;
+    height:100vh;
+    overflow-y:auto;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:4px;
+  }
+  .brand-mark{
+    width:34px;height:34px;
+    border-radius:8px;
+    background:var(--brand);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .brand-mark svg{ width:19px;height:19px; }
+  .brand-text{ line-height:1.15; }
+  .brand-text .name{ font-family:'Fraunces',serif; font-weight:600; font-size:16.5px; color:var(--ink); }
+  .brand-text .tag{ font-size:13px; color:var(--ink-soft); }
+
+  .field-group{ display:flex; flex-direction:column; gap:6px; }
+  .field-label{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    font-weight:500;
+  }
+  select, .file-btn{
+    width:100%;
+    padding:9px 10px;
+    border-radius:8px;
+    border:1px solid var(--border-strong);
+    background:#fff;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:15.5px;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  select:focus, .file-btn:focus, input:focus, button:focus{
+    outline:2px solid var(--brand);
+    outline-offset:1px;
+  }
+
+  .tabs{
+    display:flex;
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:9px;
+    padding:3px;
+    gap:2px;
+  }
+  .tab{
+    flex:1;
+    text-align:center;
+    padding:7px 6px;
+    font-size:14.5px;
+    font-weight:500;
+    color:var(--ink-soft);
+    border-radius:6px;
+    cursor:pointer;
+    border:none;
+    background:transparent;
+    font-family:'IBM Plex Sans', sans-serif;
+  }
+  .tab.active{
+    background:var(--panel);
+    color:var(--brand);
+    box-shadow:var(--shadow);
+  }
+
+  .upload-zone{
+    border:1.5px dashed var(--border-strong);
+    border-radius:10px;
+    padding:16px 10px;
+    text-align:center;
+    font-size:14px;
+    color:var(--ink-soft);
+    cursor:pointer;
+    background:var(--bg);
+  }
+  .upload-zone:hover{ border-color:var(--brand); color:var(--brand); }
+  #csvInput{ display:none; }
+  .csv-status{ font-size:13.5px; color:var(--brand); }
+
+  .slider-block{ display:flex; flex-direction:column; gap:10px; }
+  .slider-value-row{ display:flex; align-items:baseline; justify-content:space-between; }
+  .slider-value{ font-family:'Fraunces', serif; font-size:26px; font-weight:600; color:var(--brand); }
+  .slider-value sup{ font-size:15px; font-weight:500; }
+  input[type=range]{
+    -webkit-appearance:none;
+    width:100%;
+    height:5px;
+    border-radius:4px;
+    background:linear-gradient(to right, var(--brand), var(--amber));
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:18px;height:18px;
+    border-radius:50%;
+    background:#fff;
+    border:3px solid var(--brand);
+    cursor:pointer;
+    box-shadow:0 1px 3px rgba(0,0,0,0.25);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:18px;height:18px;
+    border-radius:50%;
+    background:#fff;
+    border:3px solid var(--brand);
+    cursor:pointer;
+  }
+  .slider-scale{
+    display:flex; justify-content:space-between;
+    font-size:12.5px; color:var(--ink-soft);
+    font-family:'IBM Plex Mono', monospace;
+  }
+
+  .tree-diagram{ display:flex; justify-content:center; padding:6px 0 2px; }
+
+  .num-inputs{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .num-inputs .field-group{ grid-column:span 1; }
+  input[type=text], input[type=number]{
+    width:100%;
+    padding:8px 9px;
+    border-radius:8px;
+    border:1px solid var(--border-strong);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px;
+    color:var(--ink);
+  }
+
+  .btn-primary{
+    width:100%;
+    padding:11px;
+    border-radius:9px;
+    border:none;
+    background:var(--brand);
+    color:#fff;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:15.5px;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .btn-primary:hover{ background:#23392A; }
+
+  .confidence-note{
+    font-size:13px;
+    color:var(--ink-soft);
+    line-height:1.5;
+    border-top:1px solid var(--border);
+    padding-top:14px;
+  }
+
+  /* ---------- Main ---------- */
+  main{ padding:28px 32px 60px; }
+  .topbar{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    margin-bottom:22px; gap:16px; flex-wrap:wrap;
+  }
+  .topbar h1{ font-size:23px; }
+  .topbar .sub{ color:var(--ink-soft); font-size:15.5px; margin-top:4px; max-width:520px; }
+  .confidence-badge{
+    display:inline-flex; align-items:center; gap:7px;
+    background:var(--amber-soft);
+    color:var(--amber);
+    border:1px solid #E7C6AA;
+    padding:7px 13px;
+    border-radius:20px;
+    font-size:14px;
+    font-weight:500;
+    white-space:nowrap;
+  }
+  .confidence-badge .dot{ width:7px;height:7px;border-radius:50%; background:var(--amber); }
+  .confidence-badge.calibrated{ background:var(--brand-soft); color:var(--brand); border-color:#BFD4C4; }
+  .confidence-badge.calibrated .dot{ background:var(--brand); }
+
+  .hero-row{
+    display:grid;
+    grid-template-columns:1.4fr 1fr;
+    gap:16px;
+    margin-bottom:18px;
+  }
+  @media (max-width:1100px){ .hero-row{ grid-template-columns:1fr; } }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:18px 20px;
+  }
+  .panel-title{
+    font-size:14px;
+    text-transform:none;
+    color:var(--ink-soft);
+    font-weight:500;
+    margin-bottom:12px;
+  }
+
+  .compare-diagram{ display:flex; align-items:flex-end; justify-content:space-around; height:190px; }
+  .compare-item{ text-align:center; flex:1; }
+  .compare-item .cap{ font-size:13.5px; color:var(--ink-soft); margin-top:8px; }
+
+  .metrics-row{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+    margin-bottom:18px;
+  }
+  @media (max-width:1100px){ .metrics-row{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:560px){ .metrics-row{ grid-template-columns:1fr; } }
+
+  .metric-card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:17px 18px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .metric-label{ font-size:14px; color:var(--ink-soft); font-weight:500; }
+  .metric-value{ font-family:'Fraunces',serif; font-size:29px; font-weight:600; color:var(--ink); }
+  .metric-value .unit{ font-size:16px; font-weight:500; color:var(--ink-soft); }
+  .metric-range{ font-size:13.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; }
+  .metric-bar-track{ height:6px; background:var(--bg); border-radius:4px; overflow:hidden; margin-top:2px; }
+  .metric-bar-fill{ height:100%; border-radius:4px; transition:width .25s ease; }
+
+  .risk-card{ position:relative; overflow:hidden; }
+  .risk-flag{
+    display:inline-block;
+    padding:4px 10px;
+    border-radius:6px;
+    font-size:14.5px;
+    font-weight:600;
+    margin-top:2px;
+    width:fit-content;
+  }
+
+  .lower-row{
+    display:grid;
+    grid-template-columns:1.3fr 1fr;
+    gap:16px;
+  }
+  @media (max-width:1100px){ .lower-row{ grid-template-columns:1fr; } }
+
+  .chart-wrap{ position:relative; height:220px; }
+  svg text{ font-family:'IBM Plex Mono', monospace; }
+
+  table.rank-table{ width:100%; border-collapse:collapse; font-size:14.5px; }
+  table.rank-table th{
+    text-align:left; font-weight:500; color:var(--ink-soft);
+    padding:6px 8px; border-bottom:1px solid var(--border); font-size:13px;
+  }
+  table.rank-table td{ padding:8px 8px; border-bottom:1px solid var(--border); }
+  table.rank-table tr:last-child td{ border-bottom:none; }
+  .pill{ display:inline-block; width:9px;height:9px;border-radius:50%; margin-right:6px; }
+
+  .footnote{
+    margin-top:22px;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    border-top:1px solid var(--border);
+    padding-top:14px;
+    line-height:1.6;
+  }
+
+  /* ---------- Nav switcher ---------- */
+  .nav-switch{ display:flex; flex-direction:column; gap:3px; margin-bottom:2px; }
+  .nav-item{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 11px;
+    border-radius:9px;
+    font-size:15px; font-weight:500;
+    color:var(--ink-soft);
+    cursor:pointer;
+    border:none; background:transparent;
+    font-family:'IBM Plex Sans', sans-serif;
+    text-align:left;
+  }
+  .nav-item svg{ width:16px;height:16px; flex-shrink:0; }
+  .nav-item.active{ background:var(--brand-soft); color:var(--brand); }
+  .nav-item:hover:not(.active){ background:var(--bg); }
+
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* ---------- Amostragem view ---------- */
+  .breadcrumb-row{
+    display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .breadcrumb-field{ display:flex; flex-direction:column; gap:5px; min-width:180px; flex:1; }
+  .breadcrumb-field label{ font-size:13.5px; color:var(--ink-soft); font-weight:500; }
+  .inline-new{ display:flex; gap:6px; }
+  .inline-new input{ flex:1; }
+  .btn-small{
+    padding:8px 12px; border-radius:8px; border:1px solid var(--border-strong);
+    background:#fff; font-size:14.5px; font-weight:500; color:var(--brand);
+    cursor:pointer; white-space:nowrap;
+  }
+  .btn-small:hover{ background:var(--brand-soft); }
+
+  .tree-form{
+    display:grid;
+    grid-template-columns:repeat(5,1fr) auto;
+    gap:10px;
+    align-items:end;
+    margin-bottom:14px;
+  }
+  @media (max-width:900px){ .tree-form{ grid-template-columns:repeat(2,1fr); } }
+  .tree-form .field-group label{ font-size:13px; }
+
+  .stat-strip{
+    display:flex; gap:14px; margin-bottom:16px; flex-wrap:wrap;
+  }
+  .stat-chip{
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px 16px;
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .stat-chip .v{ font-family:'Fraunces',serif; font-size:20px; font-weight:600; color:var(--brand); }
+  .stat-chip .l{ font-size:13px; color:var(--ink-soft); }
+
+  table.entry-table{ width:100%; border-collapse:collapse; font-size:15px; margin-bottom:16px; }
+  table.entry-table th{ text-align:left; font-size:13px; font-weight:500; color:var(--ink-soft); padding:6px 8px; border-bottom:1px solid var(--border); }
+  table.entry-table td{ padding:7px 8px; border-bottom:1px solid var(--border); }
+  .cat-tag{ font-size:13px; font-weight:600; padding:2px 8px; border-radius:6px; }
+  .cat-SI{ background:#DCEEE3; color:var(--ok); }
+  .cat-IM{ background:#F7EBC9; color:#96770F; }
+  .cat-IS{ background:#F5DBD8; color:var(--bad); }
+  .row-del{ color:var(--ink-soft); cursor:pointer; font-size:14px; background:none; border:none; }
+  .row-del:hover{ color:var(--bad); }
+
+  /* ---------- Banco view ---------- */
+  .clone-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    box-shadow:var(--shadow); padding:18px 20px; margin-bottom:14px;
+  }
+  .clone-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
+  .clone-head h3{ font-size:17px; }
+  .clone-meta{ font-size:14px; color:var(--ink-soft); }
+  .coverage-row{ display:flex; gap:8px; margin-top:8px; }
+  .coverage-pill{ flex:1; border-radius:8px; padding:8px 10px; text-align:center; font-size:14px; }
+  .coverage-pill .n{ font-family:'Fraunces',serif; font-size:18px; font-weight:600; display:block; }
+  .empty-state{ text-align:center; color:var(--ink-soft); padding:30px 10px; font-size:15px; }
+
+  /* ---------- Print report ---------- */
+  #printReport{ display:none; }
+  @media print{
+    body *{ visibility:hidden; }
+    #printReport, #printReport *{ visibility:visible; }
+    #printReport{ display:block; position:absolute; top:0; left:0; width:100%; padding:30px; }
+    .app{ display:none; }
+  }
+  #printReport h2{ font-size:20px; margin-bottom:4px; }
+  #printReport .pr-meta{ font-size:14px; color:var(--ink-soft); margin-bottom:18px; }
+  #printReport table{ width:100%; border-collapse:collapse; margin-bottom:18px; font-size:15px; }
+  #printReport th, #printReport td{ border:1px solid #ccc; padding:6px 10px; text-align:left; }
+  #printReport .pr-logo{ height:26px; margin-bottom:10px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L4 14h5v8h6v-8h5L12 2z" fill="#fff"/></svg>
+      </div>
+      <div class="brand-text">
+        <div class="name">InclinaWood</div>
+        <div class="tag">Simulador de decisão de colheita</div>
+      </div>
+    </div>
+
+    <div class="nav-switch" role="tablist">
+      <button class="nav-item active" data-view="painel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Painel de decisão
+      </button>
+      <button class="nav-item" data-view="amostragem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v7M12 9l-4 11h8L12 9z"/></svg>
+        Amostragem em campo
+      </button>
+      <button class="nav-item" data-view="banco">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
+        Banco de calibração
+      </button>
+    </div>
+
+    <div id="sidebarPainelExtra">
+    <div class="tabs" role="tablist">
+      <button class="tab active" id="tabManual" role="tab">Entrada manual</button>
+      <button class="tab" id="tabUpload" role="tab">Importar planilha</button>
+    </div>
+
+    <div id="manualPanel">
+      <div class="field-group">
+        <label class="field-label" for="cloneSelect">Clone / material genético</label>
+        <select id="cloneSelect">
+          <option value="pedro" selected>E. saligna - clone ref. (Pedro Kolton)</option>
+          <option value="generic">Clone não calibrado (estimativa genérica)</option>
+        </select>
+      </div>
+
+      <div class="field-group" style="margin-top:14px;">
+        <label class="field-label" for="plotName">Identificação do talhão</label>
+        <input type="text" id="plotName" value="Talhão 14-B">
+      </div>
+
+      <div class="num-inputs" style="margin-top:14px;">
+        <div class="field-group">
+          <label class="field-label" for="idade">Idade (anos)</label>
+          <input type="number" id="idade" value="8" min="1" max="30">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="dap">DAP (cm)</label>
+          <input type="number" id="dap" value="18" min="1" max="80">
+        </div>
+      </div>
+
+      <div class="slider-block" style="margin-top:18px;">
+        <label class="field-label">Ângulo de inclinação do fuste</label>
+        <div class="slider-value-row">
+          <div class="slider-value" id="angleValue">14<sup>°</sup></div>
+        </div>
+        <input type="range" id="angleSlider" min="0" max="30" step="1" value="14">
+        <div class="slider-scale"><span>0°</span><span>15°</span><span>30°</span></div>
+      </div>
+
+      <div class="tree-diagram">
+        <svg width="150" height="110" viewBox="0 0 150 110">
+          <line x1="30" y1="95" x2="130" y2="95" stroke="#D3D9CE" stroke-width="1.5"/>
+          <line x1="30" y1="95" x2="30" y2="20" stroke="#B8B8B8" stroke-width="1" stroke-dasharray="3,3"/>
+          <g id="treeGroup" transform-origin="30px 95px">
+            <line x1="30" y1="95" x2="30" y2="18" stroke="#2B4A33" stroke-width="6" stroke-linecap="round" id="treeTrunk"/>
+          </g>
+          <path id="angleArc" d="" fill="none" stroke="#B8672E" stroke-width="1.5"/>
+          <text id="angleLabel" x="40" y="80" font-size="11" fill="#B8672E" font-family="IBM Plex Mono"></text>
+        </svg>
+      </div>
+    </div>
+
+    <div id="uploadPanel" style="display:none;">
+      <div class="field-group">
+        <label class="field-label">Planilha de inventário (.csv)</label>
+        <div class="upload-zone" id="dropZone">
+          Clique para carregar CSV<br>
+          <span style="font-size:13px;">colunas: talhão, clone, inclinação, idade, dap</span>
+        </div>
+        <input type="file" id="csvInput" accept=".csv">
+        <div class="csv-status" id="csvStatus"></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="recalcBtn">Recalcular estimativas</button>
+
+    <div class="confidence-note">
+      As curvas deste protótipo usam os dados reais do clone 32864 (dissertação de Pedro Kolton, <em>E. saligna</em>) calibrados em 3 faixas de inclinação. Precisão aumenta conforme mais clones/sítios forem calibrados.
+    </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+
+  <div class="view active" id="view-painel">
+    <div class="topbar">
+      <div>
+        <h1>Painel de decisão - inclinação × qualidade de polpação</h1>
+        <div class="sub">Estimativa de densidade, kappa e rendimento a partir do ângulo de inclinação do fuste, sem necessidade de nova amostragem química.</div>
+      </div>
+      <div class="confidence-badge" id="confidenceBadge">
+        <span class="dot"></span>
+        <span id="confidenceText">Estimativa - clone parcialmente calibrado</span>
+      </div>
+    </div>
+
+    <div class="hero-row">
+      <div class="panel">
+        <div class="panel-title">Lenho normal vs. lenho de tração no fuste inclinado</div>
+        <div class="compare-diagram">
+          <div class="compare-item">
+            <svg width="120" height="150" viewBox="0 0 120 150">
+              <circle cx="60" cy="70" r="46" fill="#F3EBDD" stroke="#C9B48C" stroke-width="2"/>
+              <circle cx="60" cy="70" r="34" fill="none" stroke="#D8C7A2" stroke-width="2"/>
+              <circle cx="60" cy="70" r="22" fill="none" stroke="#D8C7A2" stroke-width="2"/>
+              <circle cx="60" cy="70" r="10" fill="#C9B48C"/>
+            </svg>
+            <div class="cap">Seção - lenho normal</div>
+          </div>
+          <div class="compare-item">
+            <svg width="120" height="150" viewBox="0 0 120 150">
+              <circle cx="60" cy="70" r="46" fill="#F3EBDD" stroke="#C9B48C" stroke-width="2"/>
+              <path id="tensionArc" d="" fill="#E3A874" opacity="0.85"/>
+              <circle cx="60" cy="70" r="46" fill="none" stroke="#C9B48C" stroke-width="2"/>
+              <circle cx="60" cy="70" r="34" fill="none" stroke="#D8C7A2" stroke-width="1.5" opacity="0.5"/>
+              <circle cx="60" cy="70" r="22" fill="none" stroke="#D8C7A2" stroke-width="1.5" opacity="0.5"/>
+              <circle cx="60" cy="70" r="10" fill="#C9782E"/>
+            </svg>
+            <div class="cap">Seção - <span id="twPctLabel">32</span>% lenho de tração</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Composição química estimada</div>
+        <div class="chart-wrap">
+          <svg width="100%" height="100%" viewBox="0 0 260 200" preserveAspectRatio="xMidYMid meet">
+            <!-- Lignin bar -->
+            <text x="10" y="30" font-size="11" fill="#5B6B5E">Lignina</text>
+            <rect x="10" y="38" width="240" height="14" rx="4" fill="#E4E8E1"/>
+            <rect id="ligninBar" x="10" y="38" width="150" height="14" rx="4" fill="#4A6C8C"/>
+            <text id="ligninVal" x="255" y="49" font-size="11" fill="#1F2A22" text-anchor="end"></text>
+
+            <text x="10" y="85" font-size="11" fill="#5B6B5E">Celulose</text>
+            <rect x="10" y="93" width="240" height="14" rx="4" fill="#E4E8E1"/>
+            <rect id="celluloseBar" x="10" y="93" width="150" height="14" rx="4" fill="#2B4A33"/>
+            <text id="celluloseVal" x="255" y="104" font-size="11" fill="#1F2A22" text-anchor="end"></text>
+
+            <text x="10" y="140" font-size="11" fill="#5B6B5E">Hemicelulose</text>
+            <rect x="10" y="148" width="240" height="14" rx="4" fill="#E4E8E1"/>
+            <rect id="hemiBar" x="10" y="148" width="150" height="14" rx="4" fill="#B8672E"/>
+            <text id="hemiVal" x="255" y="159" font-size="11" fill="#1F2A22" text-anchor="end"></text>
+
+            <text x="10" y="190" font-size="10" fill="#5B6B5E">% em relação à massa seca</text>
+          </svg>
+        </div>
+        <div style="font-size:13px; color:var(--ink-soft); margin-top:2px;">Lignina medida em laboratório; celulose/hemicelulose estimadas por diferença (holocelulose não fracionada nesta base).</div>
+      </div>
+    </div>
+
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">Densidade ponderada</div>
+        <div class="metric-value" id="densityVal">- <span class="unit">kg/m³</span></div>
+        <div class="metric-range" id="densityRange"></div>
+        <div class="metric-bar-track"><div class="metric-bar-fill" id="densityBar" style="background:var(--blue);"></div></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Kappa number esperado</div>
+        <div class="metric-value" id="kappaVal">- </div>
+        <div class="metric-range" id="kappaRange"></div>
+        <div class="metric-bar-track"><div class="metric-bar-fill" id="kappaBar" style="background:var(--amber);"></div></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Rendimento de celulose</div>
+        <div class="metric-value" id="yieldVal">- <span class="unit">%</span></div>
+        <div class="metric-range" id="yieldRange"></div>
+        <div class="metric-bar-track"><div class="metric-bar-fill" id="yieldBar" style="background:var(--brand);"></div></div>
+      </div>
+      <div class="metric-card risk-card">
+        <div class="metric-label">Risco de heterogeneidade</div>
+        <div class="risk-flag" id="riskFlag">-</div>
+        <div class="metric-range" id="riskNote" style="margin-top:4px;"></div>
+      </div>
+    </div>
+
+    <div class="lower-row">
+      <div class="panel">
+        <div class="panel-title">Curva de calibração - inclinação × kappa (clone de referência)</div>
+        <div class="chart-wrap">
+          <svg width="100%" height="100%" viewBox="0 0 520 220" preserveAspectRatio="xMidYMid meet" id="curveSvg">
+            <!-- axes -->
+            <line x1="40" y1="10" x2="40" y2="190" stroke="#D3D9CE" stroke-width="1"/>
+            <line x1="40" y1="190" x2="500" y2="190" stroke="#D3D9CE" stroke-width="1"/>
+            <text x="10" y="15" font-size="10" fill="#5B6B5E">Kappa</text>
+            <text x="470" y="208" font-size="10" fill="#5B6B5E">Inclinação (°)</text>
+            <path id="calibCurve" d="" fill="none" stroke="#4A6C8C" stroke-width="2"/>
+            <g id="calibPoints"></g>
+            <line id="currentAngleLine" x1="0" y1="10" x2="0" y2="190" stroke="#B8672E" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <circle id="currentAnglePoint" r="5" fill="#B8672E"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Priorização de colheita (talhões carregados)</div>
+        <table class="rank-table" id="rankTable">
+          <thead><tr><th>Talhão</th><th>Inclin.</th><th>Kappa est.</th><th>Risco</th></tr></thead>
+          <tbody id="rankBody">
+            <tr><td colspan="4" style="color:var(--ink-soft); text-align:center; padding-top:16px;">Importe uma planilha para ver o ranking de talhões</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footnote">
+      Protótipo de demonstração - coeficientes calibrados nos 3 grupos reais medidos por Pedro Kolton (clone 32864, <em>E. saligna</em>, CMPC Riograndense: SI 0°-5°, IM 5°-15°, IS &gt;15°). A curva entre grupos é interpolada; fora da faixa amostrada (θ &gt; ~25°) a estimativa é uma extrapolação e deve ser tratada com cautela.
+      <div style="margin-top:12px;">
+        <button class="btn-small" id="exportReportBtn">Exportar relatório (PDF)</button>
+        <button class="btn-small" id="exportCsvBtn" style="margin-left:8px;">Exportar dados (CSV)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW: AMOSTRAGEM EM CAMPO -->
+  <div class="view" id="view-amostragem">
+    <div class="topbar">
+      <div>
+        <h1>Amostragem em campo</h1>
+        <div class="sub">Registre árvores por talhão. A inclinação média e o número de amostras são calculados automaticamente conforme você adiciona árvores.</div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:18px;">
+      <div class="panel-title">Selecionar ou criar clone / talhão</div>
+      <div class="breadcrumb-row">
+        <div class="breadcrumb-field">
+          <label>Clone</label>
+          <select id="fieldCloneSelect"></select>
+        </div>
+        <div class="breadcrumb-field">
+          <div class="inline-new">
+            <input type="text" id="newCloneInput" placeholder="Novo clone (ex: 32864)">
+            <button class="btn-small" id="addCloneBtn">+ Clone</button>
+          </div>
+        </div>
+        <div class="breadcrumb-field">
+          <label>Talhão</label>
+          <select id="fieldTalhaoSelect"></select>
+        </div>
+        <div class="breadcrumb-field">
+          <div class="inline-new">
+            <input type="text" id="newTalhaoInput" placeholder="Novo talhão (ex: 14-B)">
+            <button class="btn-small" id="addTalhaoBtn">+ Talhão</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-strip">
+        <div class="stat-chip"><div class="v" id="statCount">0</div><div class="l">árvores amostradas</div></div>
+        <div class="stat-chip"><div class="v" id="statAvgAngle">-</div><div class="l">inclinação média</div></div>
+        <div class="stat-chip"><div class="v" id="statCategory">-</div><div class="l">categoria predominante</div></div>
+      </div>
+
+      <div class="panel-title">Adicionar árvore</div>
+      <div class="tree-form">
+        <div class="field-group"><label>ID árvore</label><input type="text" id="treeId" placeholder="ex: 001"></div>
+        <div class="field-group"><label>Inclinação (°)</label><input type="number" id="treeAngle" min="0" max="60" step="0.5"></div>
+        <div class="field-group"><label>DAP (cm)</label><input type="number" id="treeDap" min="0" step="0.1"></div>
+        <div class="field-group"><label>Altura (m)</label><input type="number" id="treeHeight" min="0" step="0.1"></div>
+        <div class="field-group"><label>Idade (anos)</label><input type="number" id="treeAge" min="0" step="1"></div>
+        <button class="btn-primary" style="width:auto; padding:9px 16px;" id="addTreeBtn">Adicionar</button>
+      </div>
+
+      <table class="entry-table">
+        <thead><tr><th>Árvore</th><th>Inclinação</th><th>Categoria</th><th>DAP</th><th>Altura</th><th>Idade</th><th></th></tr></thead>
+        <tbody id="treeTableBody">
+          <tr><td colspan="7" class="empty-state">Nenhuma árvore adicionada neste talhão ainda</td></tr>
+        </tbody>
+      </table>
+
+      <button class="btn-small" id="saveTalhaoBtn">Salvar talhão no banco de calibração</button>
+      <button class="btn-small" id="exportTalhaoCsvBtn" style="margin-left:8px;">Exportar árvores deste talhão (CSV)</button>
+      <span id="saveStatus" style="font-size:14px; color:var(--brand); margin-left:10px;"></span>
+    </div>
+
+    <div class="footnote">
+      Os dados ficam salvos neste navegador (armazenamento local). Para uso compartilhado entre toda a equipe florestal em produção, isso deve migrar para um banco de dados central - hoje é um protótipo funcional para a demonstração.
+    </div>
+  </div>
+
+  <!-- VIEW: BANCO DE CALIBRAÇÃO -->
+  <div class="view" id="view-banco">
+    <div class="topbar">
+      <div>
+        <h1>Banco de calibração</h1>
+        <div class="sub">Cobertura de amostragem por clone - quanto mais árvores e talhões, maior a confiança das estimativas.</div>
+      </div>
+    </div>
+    <div id="bankList"></div>
+  </div>
+
+  </main>
+</div>
+
+<div id="printReport"></div>
+
+<script>
+// ---------- Calibration model - real data, clone 32864, E. saligna ----------
+// Source: Pedro Kolton's master's dissertation (Dados-Mestrado.xlsx).
+// Category thresholds: SI 0°<θ≤5° | IM 5°<θ≤15° | IS θ>15°
+// Anchor angles use each category's approximate midpoint (SI=2.5, IM=10, IS=20)
+// for piecewise-linear interpolation. n=3 trees per category.
+const REAL_ANCHORS = {
+  angle:        [2.5,   10,    20],
+  kappa:        [19.2,  23.9,  23.7],
+  density:      [486,   477,   484],
+  yieldPct:     [53.5,  48.9,  49.2],
+  rejeitos:     [0.1,   0.4,   0.2],
+  lignina:      [28.966, 29.980, 29.114],
+  extrativos:   [2.372, 2.897, 3.453],
+  cinzas:       [0.222, 0.276, 0.281]
+};
+function classifyAngle(angle){
+  if (angle <= 5) return 'SI';
+  if (angle <= 15) return 'IM';
+  return 'IS';
+}
+function lerp(x, xs, ys){
+  if (x <= xs[0]) return ys[0] - (xs[0]-x)*((ys[1]-ys[0])/(xs[1]-xs[0]))*0.3; // gentle extrapolation below
+  for (let i=0;i<xs.length-1;i++){
+    if (x >= xs[i] && x <= xs[i+1]){
+      const t = (x-xs[i])/(xs[i+1]-xs[i]);
+      return ys[i] + t*(ys[i+1]-ys[i]);
+    }
+  }
+  // extrapolate beyond last anchor using last segment slope, damped
+  const n = xs.length;
+  const slope = (ys[n-1]-ys[n-2])/(xs[n-1]-xs[n-2]);
+  return ys[n-1] + slope*(x-xs[n-1])*0.4;
+}
+function computeEstimates(angle, clone){
+  const isCalibrated = clone === 'pedro';
+  const a = REAL_ANCHORS;
+
+  let kappa, density, yieldPct, lignin, extrativos, cinzas;
+  if (isCalibrated){
+    kappa = lerp(angle, a.angle, a.kappa);
+    density = lerp(angle, a.angle, a.density);
+    yieldPct = lerp(angle, a.angle, a.yieldPct);
+    lignin = lerp(angle, a.angle, a.lignina);
+    extrativos = lerp(angle, a.angle, a.extrativos);
+    cinzas = lerp(angle, a.angle, a.cinzas);
+  } else {
+    // generic/uncalibrated clone: same qualitative shape, wider band, no real anchor
+    const twPct = Math.min(65, angle*2.1);
+    kappa = 19 + (twPct/100)*10;
+    density = 480 + (twPct/100)*20;
+    yieldPct = 52 - (twPct/100)*4.5;
+    lignin = 29 - (twPct/100)*1.5;
+    extrativos = 2.4 + (twPct/100)*2.5;
+    cinzas = 0.22 + (twPct/100)*0.08;
+  }
+  const holocellulose = Math.max(0, 100 - lignin - extrativos - cinzas); // estimated remainder (cellulose+hemicellulose)
+  const cellulose = holocellulose*0.66; // split is an estimate - real % cellulose/hemicellulose not in dataset
+  const hemi = holocellulose*0.34;
+
+  const twPctDisplay = Math.min(70, angle*2.1); // illustrative visual-only indicator for the cross-section diagram
+
+  const rangeSpread = isCalibrated ? 0.05 : 0.18;
+  const category = classifyAngle(angle);
+
+  let riskScore = isCalibrated
+    ? (category==='SI'?0.15:category==='IM'?0.55:0.6)
+    : (category==='SI'?0.3:category==='IM'?0.6:0.75);
+  let riskLevel, riskColor;
+  if (riskScore < 0.35){ riskLevel='Baixo'; riskColor='var(--ok)'; }
+  else if (riskScore < 0.65){ riskLevel='Moderado'; riskColor='var(--warn)'; }
+  else { riskLevel='Alto'; riskColor='var(--bad)'; }
+
+  return { twPct: twPctDisplay, lignin, cellulose, hemi, density, kappa, yieldPct, rangeSpread, riskLevel, riskColor, riskScore, isCalibrated, category };
+}
+
+function fmt(n, d=1){ return n.toFixed(d); }
+
+// ---------- Calibration bank (shared by Painel, Amostragem, Banco views) ----------
+const BANK_KEY = 'inclinawood_bank_v1';
+function loadBank(){
+  try{
+    const raw = localStorage.getItem(BANK_KEY);
+    return raw ? JSON.parse(raw) : { clones:{} };
+  }catch(e){ return { clones:{} }; }
+}
+function saveBank(){
+  try{ localStorage.setItem(BANK_KEY, JSON.stringify(bank)); }catch(e){ /* storage unavailable - proceed in-memory only */ }
+}
+let bank = loadBank();
+
+function averageAngleForClone(cloneName){
+  if (!bank.clones[cloneName]) return null;
+  let all = [];
+  Object.values(bank.clones[cloneName].talhoes).forEach(t => all = all.concat(t.trees));
+  if (!all.length) return null;
+  return all.reduce((s,t)=>s+t.angle,0)/all.length;
+}
+
+function populatePainelCloneSelect(){
+  const sel = document.getElementById('cloneSelect');
+  const existingValues = Array.from(sel.options).map(o=>o.value);
+  Object.keys(bank.clones).forEach(name=>{
+    const treeCount = Object.values(bank.clones[name].talhoes).reduce((s,t)=>s+t.trees.length,0);
+    const label = `Clone ${name} (${treeCount} árvore(s) - estimativa genérica)`;
+    if (!existingValues.includes(name)){
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = label;
+      sel.appendChild(opt);
+    } else {
+      const existingOpt = Array.from(sel.options).find(o=>o.value===name);
+      if (existingOpt) existingOpt.textContent = label;
+    }
+  });
+}
+populatePainelCloneSelect();
+
+function render(){
+  const angle = parseInt(document.getElementById('angleSlider').value, 10);
+  const clone = document.getElementById('cloneSelect').value;
+  document.getElementById('angleValue').innerHTML = angle + '<sup>°</sup>';
+
+  const r = computeEstimates(angle, clone);
+
+  // confidence badge
+  const badge = document.getElementById('confidenceBadge');
+  const badgeText = document.getElementById('confidenceText');
+  if (r.isCalibrated){
+    badge.classList.add('calibrated');
+    badgeText.textContent = 'Calibrado - clone de referência (Pedro Kolton)';
+  } else {
+    badge.classList.remove('calibrated');
+    badgeText.textContent = 'Estimativa - clone sem calibração própria';
+  }
+
+  // tree tilt
+  document.getElementById('treeGroup').setAttribute('transform', `rotate(${angle*0.9} 30 95)`);
+  // angle arc + label
+  const rad = angle*0.9*Math.PI/180;
+  const arcX = 30 + 22*Math.sin(rad);
+  const arcY = 95 - 22*Math.cos(rad);
+  document.getElementById('angleArc').setAttribute('d', `M30,73 A22,22 0 0,1 ${arcX.toFixed(1)},${arcY.toFixed(1)}`);
+  document.getElementById('angleLabel').textContent = angle + '°';
+
+  // tension wood arc in cross-section (donut segment proportional to twPct)
+  const pct = r.twPct/100;
+  const cx=60, cy=70, rad2=46;
+  const startAngle = -90;
+  const endAngle = startAngle + pct*360;
+  const toXY = (deg)=>{
+    const a = deg*Math.PI/180;
+    return [cx + rad2*Math.cos(a), cy + rad2*Math.sin(a)];
+  };
+  const [sx,sy] = toXY(startAngle);
+  const [ex,ey] = toXY(endAngle);
+  const largeArc = pct > 0.5 ? 1 : 0;
+  document.getElementById('tensionArc').setAttribute('d',
+    `M${cx},${cy} L${sx.toFixed(1)},${sy.toFixed(1)} A${rad2},${rad2} 0 ${largeArc} 1 ${ex.toFixed(1)},${ey.toFixed(1)} Z`);
+  document.getElementById('twPctLabel').textContent = Math.round(r.twPct);
+
+  // chemical composition bars (scale to 260px width area, max ~55%)
+  const scale = 240/55;
+  document.getElementById('ligninBar').setAttribute('width', Math.max(4, r.lignin*scale/1.6));
+  document.getElementById('celluloseBar').setAttribute('width', Math.max(4, r.cellulose*scale/1.9));
+  document.getElementById('hemiBar').setAttribute('width', Math.max(4, r.hemi*scale/1.2));
+  document.getElementById('ligninVal').textContent = fmt(r.lignin)+'%';
+  document.getElementById('celluloseVal').textContent = fmt(r.cellulose)+'%';
+  document.getElementById('hemiVal').textContent = fmt(r.hemi)+'%';
+
+  // metric cards
+  document.getElementById('densityVal').innerHTML = Math.round(r.density) + ' <span class="unit">kg/m³</span>';
+  document.getElementById('densityRange').textContent = `faixa: ${Math.round(r.density*(1-r.rangeSpread))}-${Math.round(r.density*(1+r.rangeSpread))} kg/m³`;
+  document.getElementById('densityBar').style.width = Math.min(100, (r.density-400)/3) + '%';
+
+  document.getElementById('kappaVal').textContent = fmt(r.kappa);
+  document.getElementById('kappaRange').textContent = `faixa: ${fmt(r.kappa*(1-r.rangeSpread))}-${fmt(r.kappa*(1+r.rangeSpread))}`;
+  document.getElementById('kappaBar').style.width = Math.min(100, (r.kappa/30)*100) + '%';
+
+  document.getElementById('yieldVal').innerHTML = fmt(r.yieldPct) + ' <span class="unit">%</span>';
+  document.getElementById('yieldRange').textContent = `faixa: ${fmt(r.yieldPct*(1-r.rangeSpread))}-${fmt(r.yieldPct*(1+r.rangeSpread))}%`;
+  document.getElementById('yieldBar').style.width = Math.min(100, (r.yieldPct/55)*100) + '%';
+
+  const riskFlag = document.getElementById('riskFlag');
+  riskFlag.textContent = r.riskLevel;
+  riskFlag.style.background = r.riskColor.replace('var(--ok)','#DCEEE3').replace('var(--warn)','#F7EBC9').replace('var(--bad)','#F5DBD8');
+  riskFlag.style.color = r.riskColor;
+  document.getElementById('riskNote').textContent = r.isCalibrated
+    ? 'baseado em dados reais do clone'
+    : 'sem dados próprios - usar com cautela';
+
+  // calibration curve
+  drawCurve(angle, r.kappa, r.isCalibrated);
+}
+
+function drawCurve(currentAngle, currentKappa, isCalibrated){
+  const w=520,h=220, padL=40, padR=20, padT=10, padB=30;
+  const maxAngle=30, minKappa=15, maxKappa=28;
+  const xScale = a => padL + (a/maxAngle)*(w-padL-padR);
+  const yScale = k => (h-padB) - ((k-minKappa)/(maxKappa-minKappa))*(h-padB-padT);
+
+  let d='';
+  const pts=[];
+  for(let a=0;a<=maxAngle;a+=1){
+    const est = computeEstimates(a,'pedro');
+    pts.push([a, est.kappa]);
+  }
+  pts.forEach(([a,k],i)=>{
+    const x=xScale(a), y=yScale(k);
+    d += (i===0?'M':'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  });
+  document.getElementById('calibCurve').setAttribute('d', d);
+
+  // real measured category points (n=3 trees each) - the only actual data anchors
+  const pointsGroup = document.getElementById('calibPoints');
+  pointsGroup.innerHTML='';
+  const labels = ['SI','IM','IS'];
+  REAL_ANCHORS.angle.forEach((a,i)=>{
+    const k = REAL_ANCHORS.kappa[i];
+    const x=xScale(a), y=yScale(k);
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 5);
+    c.setAttribute('fill', '#2B4A33');
+    c.setAttribute('stroke', '#fff'); c.setAttribute('stroke-width','1.5');
+    pointsGroup.appendChild(c);
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x', x); t.setAttribute('y', y-10);
+    t.setAttribute('font-size','10'); t.setAttribute('fill','#5B6B5E'); t.setAttribute('text-anchor','middle');
+    t.textContent = labels[i] + ' (n=3)';
+    pointsGroup.appendChild(t);
+  });
+
+  const cx = xScale(currentAngle);
+  const cy = yScale(currentKappa);
+  document.getElementById('currentAngleLine').setAttribute('x1', cx);
+  document.getElementById('currentAngleLine').setAttribute('x2', cx);
+  document.getElementById('currentAnglePoint').setAttribute('cx', cx);
+  document.getElementById('currentAnglePoint').setAttribute('cy', cy);
+  document.getElementById('currentAnglePoint').setAttribute('fill', isCalibrated ? '#B8672E' : '#8A8F86');
+}
+
+// ---------- CSV upload ----------
+function parseCSV(text){
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
+  const rows = lines.slice(1).map(line=>{
+    const cells = line.split(',').map(c=>c.trim());
+    const obj={};
+    headers.forEach((h,i)=> obj[h]=cells[i]);
+    return obj;
+  });
+  return rows;
+}
+
+function renderRankTable(rows){
+  const body = document.getElementById('rankBody');
+  if(!rows.length){
+    body.innerHTML = '<tr><td colspan="4" style="color:var(--ink-soft); text-align:center; padding-top:16px;">Nenhum talhão válido encontrado na planilha</td></tr>';
+    return;
+  }
+  const processed = rows.map(row=>{
+    const angle = parseFloat(row['inclinação'] ?? row['inclinacao'] ?? row['angulo'] ?? row['ângulo'] ?? 0);
+    const clone = (row['clone']||'').toLowerCase().includes('pedro') || (row['clone']||'').toLowerCase().includes('saligna') ? 'pedro' : 'generic';
+    const est = computeEstimates(angle, clone);
+    return {
+      talhao: row['talhão'] || row['talhao'] || row['plot'] || '-',
+      angle, kappa: est.kappa, riskLevel: est.riskLevel, riskScore: est.riskScore, riskColor: est.riskColor
+    };
+  }).sort((a,b)=> b.riskScore - a.riskScore);
+
+  body.innerHTML = processed.map(p=>{
+    return `<tr>
+      <td>${p.talhao}</td>
+      <td>${fmt(p.angle,0)}°</td>
+      <td>${fmt(p.kappa)}</td>
+      <td><span class="pill" style="background:${p.riskColor}"></span>${p.riskLevel}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('tabManual').addEventListener('click', ()=>{
+  document.getElementById('tabManual').classList.add('active');
+  document.getElementById('tabUpload').classList.remove('active');
+  document.getElementById('manualPanel').style.display='block';
+  document.getElementById('uploadPanel').style.display='none';
+});
+document.getElementById('tabUpload').addEventListener('click', ()=>{
+  document.getElementById('tabUpload').classList.add('active');
+  document.getElementById('tabManual').classList.remove('active');
+  document.getElementById('uploadPanel').style.display='block';
+  document.getElementById('manualPanel').style.display='none';
+});
+
+document.getElementById('dropZone').addEventListener('click', ()=> document.getElementById('csvInput').click());
+document.getElementById('csvInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    try{
+      const rows = parseCSV(ev.target.result);
+      document.getElementById('csvStatus').textContent = `${rows.length} talhões carregados com sucesso`;
+      renderRankTable(rows);
+    }catch(err){
+      document.getElementById('csvStatus').textContent = 'Não foi possível ler o arquivo - verifique o formato CSV';
+    }
+  };
+  reader.onerror = ()=>{
+    document.getElementById('csvStatus').textContent = 'Erro ao ler o arquivo';
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('angleSlider').addEventListener('input', render);
+document.getElementById('cloneSelect').addEventListener('change', (e)=>{
+  const avg = averageAngleForClone(e.target.value);
+  if (avg !== null){
+    const rounded = Math.min(30, Math.max(0, Math.round(avg)));
+    document.getElementById('angleSlider').value = rounded;
+  }
+  render();
+});
+document.getElementById('recalcBtn').addEventListener('click', render);
+
+render();
+
+// ================= VIEW SWITCHING =================
+const views = ['painel','amostragem','banco'];
+document.querySelectorAll('.nav-item').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const target = btn.getAttribute('data-view');
+    document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    views.forEach(v=> document.getElementById('view-'+v).classList.toggle('active', v===target));
+    document.getElementById('sidebarPainelExtra').style.display = (target==='painel') ? 'flex' : 'none';
+    document.getElementById('sidebarPainelExtra').style.flexDirection = 'column';
+    document.getElementById('sidebarPainelExtra').style.gap = '22px';
+    if (target==='banco') renderBank();
+  });
+});
+
+// ================= AMOSTRAGEM EM CAMPO =================
+let currentClone = null, currentTalhao = null;
+
+function populateCloneSelect(){
+  const sel = document.getElementById('fieldCloneSelect');
+  const names = Object.keys(bank.clones);
+  sel.innerHTML = names.length ? names.map(n=>`<option value="${n}">${n}</option>`).join('') : '<option value="">- nenhum clone cadastrado -</option>';
+  if (names.length && !names.includes(currentClone)) currentClone = names[0];
+  if (names.length) sel.value = currentClone;
+}
+function populateTalhaoSelect(){
+  const sel = document.getElementById('fieldTalhaoSelect');
+  if (!currentClone || !bank.clones[currentClone]){ sel.innerHTML = '<option value="">- selecione um clone -</option>'; currentTalhao=null; return; }
+  const names = Object.keys(bank.clones[currentClone].talhoes);
+  sel.innerHTML = names.length ? names.map(n=>`<option value="${n}">${n}</option>`).join('') : '<option value="">- nenhum talhão cadastrado -</option>';
+  if (names.length && !names.includes(currentTalhao)) currentTalhao = names[0];
+  if (names.length) sel.value = currentTalhao; else currentTalhao = null;
+}
+function currentTreeList(){
+  if (currentClone && currentTalhao && bank.clones[currentClone] && bank.clones[currentClone].talhoes[currentTalhao]){
+    return bank.clones[currentClone].talhoes[currentTalhao].trees;
+  }
+  return [];
+}
+function renderTreeTable(){
+  const trees = currentTreeList();
+  const body = document.getElementById('treeTableBody');
+  if (!trees.length){
+    body.innerHTML = '<tr><td colspan="7" class="empty-state">Nenhuma árvore adicionada neste talhão ainda</td></tr>';
+    return;
+  }
+  body.innerHTML = trees.map((t,i)=>{
+    const cat = classifyAngle(t.angle);
+    return `<tr>
+      <td>${t.id || ('#'+(i+1))}</td>
+      <td>${fmt(t.angle,1)}°</td>
+      <td><span class="cat-tag cat-${cat}">${cat}</span></td>
+      <td>${t.dap ?? '-'}</td>
+      <td>${t.height ?? '-'}</td>
+      <td>${t.age ?? '-'}</td>
+      <td><button class="row-del" data-idx="${i}">remover</button></td>
+    </tr>`;
+  }).join('');
+  body.querySelectorAll('.row-del').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const idx = parseInt(b.getAttribute('data-idx'),10);
+      trees.splice(idx,1);
+      saveBank();
+      renderTreeTable();
+      updateStats();
+    });
+  });
+}
+function updateStats(){
+  const trees = currentTreeList();
+  document.getElementById('statCount').textContent = trees.length;
+  if (trees.length){
+    const avg = trees.reduce((s,t)=>s+t.angle,0)/trees.length;
+    document.getElementById('statAvgAngle').textContent = fmt(avg,1)+'°';
+    document.getElementById('statCategory').textContent = classifyAngle(avg);
+  } else {
+    document.getElementById('statAvgAngle').textContent = '-';
+    document.getElementById('statCategory').textContent = '-';
+  }
+}
+
+document.getElementById('fieldCloneSelect').addEventListener('change', (e)=>{
+  currentClone = e.target.value || null;
+  populateTalhaoSelect();
+  renderTreeTable();
+  updateStats();
+});
+document.getElementById('fieldTalhaoSelect').addEventListener('change', (e)=>{
+  currentTalhao = e.target.value || null;
+  renderTreeTable();
+  updateStats();
+});
+document.getElementById('addCloneBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('newCloneInput').value.trim();
+  if (!name) return;
+  bank.clones[name] = bank.clones[name] || { talhoes:{} };
+  currentClone = name;
+  saveBank();
+  document.getElementById('newCloneInput').value='';
+  populateCloneSelect();
+  populatePainelCloneSelect();
+  populateTalhaoSelect();
+  renderTreeTable();
+  updateStats();
+});
+document.getElementById('addTalhaoBtn').addEventListener('click', ()=>{
+  if (!currentClone){ document.getElementById('saveStatus').textContent='Cadastre um clone primeiro'; return; }
+  const name = document.getElementById('newTalhaoInput').value.trim();
+  if (!name) return;
+  bank.clones[currentClone].talhoes[name] = bank.clones[currentClone].talhoes[name] || { trees:[] };
+  currentTalhao = name;
+  saveBank();
+  document.getElementById('newTalhaoInput').value='';
+  populateTalhaoSelect();
+  renderTreeTable();
+  updateStats();
+});
+document.getElementById('addTreeBtn').addEventListener('click', ()=>{
+  if (!currentClone || !currentTalhao){
+    document.getElementById('saveStatus').textContent = 'Selecione (ou crie) um clone e um talhão antes de adicionar árvores';
+    return;
+  }
+  const angleVal = parseFloat(document.getElementById('treeAngle').value);
+  if (isNaN(angleVal)){
+    document.getElementById('saveStatus').textContent = 'Informe o ângulo de inclinação da árvore';
+    return;
+  }
+  const tree = {
+    id: document.getElementById('treeId').value.trim(),
+    angle: angleVal,
+    dap: document.getElementById('treeDap').value ? parseFloat(document.getElementById('treeDap').value) : null,
+    height: document.getElementById('treeHeight').value ? parseFloat(document.getElementById('treeHeight').value) : null,
+    age: document.getElementById('treeAge').value ? parseFloat(document.getElementById('treeAge').value) : null
+  };
+  bank.clones[currentClone].talhoes[currentTalhao].trees.push(tree);
+  saveBank();
+  ['treeId','treeAngle','treeDap','treeHeight','treeAge'].forEach(id=> document.getElementById(id).value='');
+  document.getElementById('saveStatus').textContent = '';
+  renderTreeTable();
+  updateStats();
+  populatePainelCloneSelect();
+});
+document.getElementById('saveTalhaoBtn').addEventListener('click', ()=>{
+  saveBank();
+  document.getElementById('saveStatus').textContent = 'Talhão salvo no banco de calibração ✓';
+  setTimeout(()=>{ document.getElementById('saveStatus').textContent=''; }, 2500);
+});
+document.getElementById('exportTalhaoCsvBtn').addEventListener('click', ()=>{
+  const trees = currentTreeList();
+  if (!trees.length){
+    document.getElementById('saveStatus').textContent = 'Nenhuma árvore para exportar neste talhão';
+    return;
+  }
+  let csv = 'clone,talhao,arvore_id,inclinacao_graus,categoria,dap_cm,altura_m,idade_anos\n';
+  trees.forEach(t=>{
+    csv += `${currentClone},${currentTalhao},${t.id||''},${t.angle},${classifyAngle(t.angle)},${t.dap ?? ''},${t.height ?? ''},${t.age ?? ''}\n`;
+  });
+  triggerDownload(`inclinawood_${currentTalhao || 'talhao'}.csv`, csv);
+});
+
+populateCloneSelect();
+populateTalhaoSelect();
+renderTreeTable();
+updateStats();
+
+// ================= BANCO DE CALIBRAÇÃO =================
+function renderBank(){
+  const list = document.getElementById('bankList');
+  let html = '';
+
+  // Fixed reference entry - the real dissertation dataset (category-level, not per-tree)
+  html += `
+    <div class="clone-card">
+      <div class="clone-head">
+        <h3>Clone 32864 - <em>Eucalyptus saligna</em></h3>
+        <span class="confidence-badge calibrated"><span class="dot"></span>Calibração inicial (referência)</span>
+      </div>
+      <div class="clone-meta">Fonte: dissertação de mestrado, Pedro Kolton - CMPC Celulose Riograndense, Butiá/RS. 1 talhão de referência, 9 árvores (3 por categoria).</div>
+      <div class="coverage-row">
+        <div class="coverage-pill cat-SI"><span class="n">3</span>SI (0-5°)</div>
+        <div class="coverage-pill cat-IM"><span class="n">3</span>IM (5-15°)</div>
+        <div class="coverage-pill cat-IS"><span class="n">3</span>IS (&gt;15°)</div>
+      </div>
+    </div>`;
+
+  const cloneNames = Object.keys(bank.clones);
+  if (!cloneNames.length){
+    html += `<div class="panel"><div class="empty-state">Nenhum clone adicional cadastrado ainda - use "Amostragem em campo" para começar a registrar novos talhões e árvores.</div></div>`;
+  } else {
+    cloneNames.forEach(name=>{
+      const talhoes = bank.clones[name].talhoes;
+      const talhaoNames = Object.keys(talhoes);
+      let allTrees = [];
+      talhaoNames.forEach(t=> allTrees = allTrees.concat(talhoes[t].trees));
+      const counts = { SI:0, IM:0, IS:0 };
+      allTrees.forEach(t=> counts[classifyAngle(t.angle)]++);
+      const confidence = allTrees.length >= 6 ? 'calibrated' : '';
+      const confidenceLabel = allTrees.length >= 6 ? 'Cobertura suficiente para calibração própria' : 'Ainda usando modelo genérico/de referência';
+      html += `
+        <div class="clone-card">
+          <div class="clone-head">
+            <h3>Clone ${name}</h3>
+            <span class="confidence-badge ${confidence}"><span class="dot"></span>${confidenceLabel}</span>
+          </div>
+          <div class="clone-meta">${talhaoNames.length} talhão(ões) - ${allTrees.length} árvore(s) amostrada(s)</div>
+          <div class="coverage-row">
+            <div class="coverage-pill cat-SI"><span class="n">${counts.SI}</span>SI (0-5°)</div>
+            <div class="coverage-pill cat-IM"><span class="n">${counts.IM}</span>IM (5-15°)</div>
+            <div class="coverage-pill cat-IS"><span class="n">${counts.IS}</span>IS (&gt;15°)</div>
+          </div>
+        </div>`;
+    });
+  }
+  list.innerHTML = html;
+}
+
+// ================= EXPORT: REPORT (PRINT/PDF) & CSV =================
+function buildReportHTML(){
+  const angle = parseInt(document.getElementById('angleSlider').value, 10);
+  const clone = document.getElementById('cloneSelect').value;
+  const plot = document.getElementById('plotName').value || 'Não informado';
+  const r = computeEstimates(angle, clone);
+  const now = new Date().toLocaleString('pt-BR');
+
+  let rankRows = '';
+  document.querySelectorAll('#rankBody tr').forEach(tr=>{
+    const cells = tr.querySelectorAll('td');
+    if (cells.length === 4){
+      rankRows += `<tr>${Array.from(cells).slice(0,4).map((c,i)=> i===3 ? `<td>${c.textContent.trim()}</td>` : `<td>${c.textContent}</td>`).join('')}</tr>`;
+    }
+  });
+
+  return `
+    <h2>Relatório de decisão - inclinação e qualidade de polpação</h2>
+    <div class="pr-meta">Gerado em ${now} | Talhão: ${plot} | Clone: ${document.getElementById('cloneSelect').selectedOptions[0].textContent}</div>
+    <table>
+      <tr><th>Parâmetro</th><th>Valor estimado</th></tr>
+      <tr><td>Ângulo de inclinação considerado</td><td>${angle}°</td></tr>
+      <tr><td>Categoria</td><td>${r.category}</td></tr>
+      <tr><td>Densidade ponderada</td><td>${Math.round(r.density)} kg/m³</td></tr>
+      <tr><td>Kappa number esperado</td><td>${fmt(r.kappa)}</td></tr>
+      <tr><td>Rendimento de celulose</td><td>${fmt(r.yieldPct)}%</td></tr>
+      <tr><td>Lignina total</td><td>${fmt(r.lignin)}%</td></tr>
+      <tr><td>Risco de heterogeneidade</td><td>${r.riskLevel}</td></tr>
+      <tr><td>Base do modelo</td><td>${r.isCalibrated ? 'Calibrado (clone 32864, dissertação Pedro Kolton)' : 'Estimativa genérica (clone não calibrado)'}</td></tr>
+    </table>
+    ${rankRows ? `<h2 style="font-size:16px;">Priorização de talhões carregados</h2>
+    <table><tr><th>Talhão</th><th>Inclinação</th><th>Kappa est.</th><th>Risco</th></tr>${rankRows}</table>` : ''}
+    <div class="pr-meta">Protótipo de demonstração - InclinaWood (UFPel). Coeficientes calibrados nos dados reais do clone 32864 (SI/IM/IS); resultados fora dessa faixa são extrapolados.</div>
+  `;
+}
+
+document.getElementById('exportReportBtn').addEventListener('click', ()=>{
+  document.getElementById('printReport').innerHTML = buildReportHTML();
+  window.print();
+});
+
+function buildCsvFromEstimate(){
+  const angle = parseInt(document.getElementById('angleSlider').value, 10);
+  const clone = document.getElementById('cloneSelect').value;
+  const plot = document.getElementById('plotName').value || 'talhao';
+  const r = computeEstimates(angle, clone);
+  const header = 'talhao,inclinacao,categoria,densidade_kg_m3,kappa,rendimento_pct,lignina_pct,risco\n';
+  const row = `${plot},${angle},${r.category},${Math.round(r.density)},${fmt(r.kappa)},${fmt(r.yieldPct)},${fmt(r.lignin)},${r.riskLevel}\n`;
+  return header + row;
+}
+
+function buildCsvExport(){
+  // Prioridade 1: ranking de talhões carregado via upload de planilha
+  const rankRows = Array.from(document.querySelectorAll('#rankBody tr')).filter(tr => tr.querySelectorAll('td').length === 4);
+  if (rankRows.length){
+    let csv = 'talhao,inclinacao_graus,kappa_estimado,risco\n';
+    rankRows.forEach(tr=>{
+      const cells = tr.querySelectorAll('td');
+      const talhao = cells[0].textContent.trim();
+      const inclinacao = cells[1].textContent.trim().replace('°','');
+      const kappa = cells[2].textContent.trim();
+      const risco = cells[3].textContent.replace(/\s+/g,' ').trim();
+      csv += `${talhao},${inclinacao},${kappa},${risco}\n`;
+    });
+    return csv;
+  }
+  // Prioridade 2: árvores amostradas do clone selecionado (módulo Amostragem em campo)
+  const cloneVal = document.getElementById('cloneSelect').value;
+  if (bank.clones[cloneVal]){
+    let allTrees = [];
+    Object.entries(bank.clones[cloneVal].talhoes).forEach(([talhaoName, t])=>{
+      t.trees.forEach(tree => allTrees.push({ talhao: talhaoName, ...tree }));
+    });
+    if (allTrees.length){
+      let csv = 'clone,talhao,arvore_id,inclinacao_graus,categoria,dap_cm,altura_m,idade_anos,kappa_estimado,densidade_estimada_kg_m3,rendimento_estimado_pct,risco\n';
+      allTrees.forEach(t=>{
+        const est = computeEstimates(t.angle, cloneVal);
+        csv += `${cloneVal},${t.talhao},${t.id||''},${t.angle},${classifyAngle(t.angle)},${t.dap ?? ''},${t.height ?? ''},${t.age ?? ''},${fmt(est.kappa)},${Math.round(est.density)},${fmt(est.yieldPct)},${est.riskLevel}\n`;
+      });
+      return csv;
+    }
+  }
+  // Prioridade 3: estimativa única do slider atual (fallback)
+  return buildCsvFromEstimate();
+}
+
+async function triggerDownload(filename, textContent){
+  // Try the claude.ai downloads capability first (works inside the published artifact preview)
+  try{
+    if (window.claude && typeof window.claude.use === 'function'){
+      const downloads = await window.claude.use('downloads');
+      if (downloads){
+        await downloads.save({ filename, data: textContent });
+        return;
+      }
+    }
+  }catch(e){ /* fall through to standard browser download */ }
+
+  // Standard browser download (works when hosted normally, e.g. GitHub Pages)
+  try{
+    const blob = new Blob([textContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){
+    alert('Não foi possível baixar o arquivo neste ambiente.');
+  }
+}
+
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+  const csv = buildCsvExport();
+  triggerDownload('inclinawood_dados.csv', csv);
+});
+</script>
+</body>
+</html>
