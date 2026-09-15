@@ -431,6 +431,19 @@
   #printReport table{ width:100%; border-collapse:collapse; margin-bottom:18px; font-size:15px; }
   #printReport th, #printReport td{ border:1px solid #ccc; padding:6px 10px; text-align:left; }
   #printReport .pr-logo{ height:26px; margin-bottom:10px; }
+
+  /* ---------- Calibration modal ---------- */
+  .modal-overlay{ position:fixed; inset:0; background:rgba(31,42,34,0.45); display:flex; align-items:center; justify-content:center; z-index:1000; padding:20px; }
+  .modal-overlay.hidden{ display:none; }
+  .modal-panel{ background:#fff; border-radius:14px; padding:26px 28px; width:520px; max-width:100%; max-height:88vh; overflow-y:auto; box-shadow:0 8px 40px rgba(0,0,0,0.25); }
+  .modal-panel h3{ font-size:19px; margin-bottom:4px; }
+  .modal-sub{ font-size:13px; color:var(--ink-soft); margin-bottom:18px; }
+  .modal-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:4px; }
+  .btn-secondary{ padding:10px 18px; border-radius:9px; border:1px solid var(--border-strong); background:#fff; color:var(--ink-soft); font-weight:500; font-size:14px; cursor:pointer; }
+  .btn-secondary:hover{ background:var(--bg); }
+  .modal-hint{ font-size:11.5px; color:var(--ink-soft); margin-top:-10px; margin-bottom:16px; }
+  .calib-status-row{ margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 </style>
 </head>
 <body>
@@ -752,6 +765,39 @@
 
 <div id="printReport"></div>
 
+<div class="modal-overlay hidden" id="calibModal">
+  <div class="modal-panel">
+    <h3>Inserir dados de calibração</h3>
+    <div class="modal-sub" id="calibModalSub">Clone: -</div>
+
+    <div class="field-group" style="margin-bottom:16px;">
+      <label class="field-label">Categoria de inclinação</label>
+      <select id="calibCategory">
+        <option value="SI">SI - Sem inclinação (0°-5°)</option>
+        <option value="IM">IM - Inclinação média (5°-15°)</option>
+        <option value="IS">IS - Inclinação severa (acima de 15°)</option>
+      </select>
+    </div>
+    <div class="modal-hint">Insira a média dos resultados de bancada para as árvores dessa categoria (mesmo protocolo usado na dissertação de referência).</div>
+
+    <div class="modal-grid">
+      <div class="field-group"><label class="field-label">Densidade básica (kg/m³) *</label><input type="number" id="calibDensity" step="0.1"></div>
+      <div class="field-group"><label class="field-label">Kappa number *</label><input type="number" id="calibKappa" step="0.1"></div>
+      <div class="field-group"><label class="field-label">Rendimento depurado (%) *</label><input type="number" id="calibYield" step="0.1"></div>
+      <div class="field-group"><label class="field-label">Teor de rejeitos (%)</label><input type="number" id="calibRejeitos" step="0.01"></div>
+      <div class="field-group"><label class="field-label">Lignina total (%) *</label><input type="number" id="calibLignina" step="0.01"></div>
+      <div class="field-group"><label class="field-label">Extrativos totais (%)</label><input type="number" id="calibExtrativos" step="0.01"></div>
+      <div class="field-group"><label class="field-label">Cinzas (%)</label><input type="number" id="calibCinzas" step="0.01"></div>
+      <div class="field-group"><label class="field-label">Nº de árvores (repetições)</label><input type="number" id="calibN" step="1" min="1"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="calibCancelBtn">Cancelar</button>
+      <button class="btn-primary" style="width:auto; padding:10px 20px;" id="calibSaveBtn">Salvar calibração</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ---------- Calibration model - real data, clone 32864, E. saligna ----------
 // Source: Pedro Kolton's master's dissertation (Dados-Mestrado.xlsx).
@@ -786,18 +832,42 @@ function lerp(x, xs, ys){
   const slope = (ys[n-1]-ys[n-2])/(xs[n-1]-xs[n-2]);
   return ys[n-1] + slope*(x-xs[n-1])*0.4;
 }
-function computeEstimates(angle, clone){
-  const isCalibrated = clone === 'pedro';
-  const a = REAL_ANCHORS;
 
-  let kappa, density, yieldPct, lignin, extrativos, cinzas;
+// Returns interpolation anchors for a clone, or null if there isn't enough
+// lab-calibrated data to interpolate (needs at least 2 of the 3 categories).
+const CATEGORY_MIDPOINT = { SI: 2.5, IM: 10, IS: 20 };
+function getCalibrationAnchors(cloneName){
+  if (cloneName === 'pedro') return { ...REAL_ANCHORS, coverage: 3 };
+  const calib = bank.clones[cloneName] && bank.clones[cloneName].calibration;
+  if (!calib) return null;
+  const present = ['SI','IM','IS'].filter(k => calib[k]);
+  if (present.length < 2) return null;
+  return {
+    angle: present.map(k => CATEGORY_MIDPOINT[k]),
+    kappa: present.map(k => calib[k].kappa),
+    density: present.map(k => calib[k].density),
+    yieldPct: present.map(k => calib[k].yieldPct),
+    lignina: present.map(k => calib[k].lignina),
+    extrativos: present.map(k => calib[k].extrativos ?? 0),
+    cinzas: present.map(k => calib[k].cinzas ?? 0),
+    coverage: present.length
+  };
+}
+
+function computeEstimates(angle, clone){
+  const anchors = getCalibrationAnchors(clone);
+  const isCalibrated = !!anchors;
+  const category = classifyAngle(angle);
+
+  let kappa, density, yieldPct, lignin, extrativos, cinzas, coverage = 0;
   if (isCalibrated){
-    kappa = lerp(angle, a.angle, a.kappa);
-    density = lerp(angle, a.angle, a.density);
-    yieldPct = lerp(angle, a.angle, a.yieldPct);
-    lignin = lerp(angle, a.angle, a.lignina);
-    extrativos = lerp(angle, a.angle, a.extrativos);
-    cinzas = lerp(angle, a.angle, a.cinzas);
+    kappa = lerp(angle, anchors.angle, anchors.kappa);
+    density = lerp(angle, anchors.angle, anchors.density);
+    yieldPct = lerp(angle, anchors.angle, anchors.yieldPct);
+    lignin = lerp(angle, anchors.angle, anchors.lignina);
+    extrativos = lerp(angle, anchors.angle, anchors.extrativos);
+    cinzas = lerp(angle, anchors.angle, anchors.cinzas);
+    coverage = anchors.coverage;
   } else {
     // generic/uncalibrated clone: same qualitative shape, wider band, no real anchor
     const twPct = Math.min(65, angle*2.1);
@@ -807,6 +877,8 @@ function computeEstimates(angle, clone){
     lignin = 29 - (twPct/100)*1.5;
     extrativos = 2.4 + (twPct/100)*2.5;
     cinzas = 0.22 + (twPct/100)*0.08;
+    const calib = bank.clones[clone] && bank.clones[clone].calibration;
+    coverage = calib ? Object.keys(calib).length : 0;
   }
   const holocellulose = Math.max(0, 100 - lignin - extrativos - cinzas); // estimated remainder (cellulose+hemicellulose)
   const cellulose = holocellulose*0.66; // split is an estimate - real % cellulose/hemicellulose not in dataset
@@ -814,8 +886,7 @@ function computeEstimates(angle, clone){
 
   const twPctDisplay = Math.min(70, angle*2.1); // illustrative visual-only indicator for the cross-section diagram
 
-  const rangeSpread = isCalibrated ? 0.05 : 0.18;
-  const category = classifyAngle(angle);
+  const rangeSpread = isCalibrated ? (coverage>=3 ? 0.05 : 0.09) : 0.18;
 
   let riskScore = isCalibrated
     ? (category==='SI'?0.15:category==='IM'?0.55:0.6)
@@ -825,7 +896,7 @@ function computeEstimates(angle, clone){
   else if (riskScore < 0.65){ riskLevel='Moderado'; riskColor='var(--warn)'; }
   else { riskLevel='Alto'; riskColor='var(--bad)'; }
 
-  return { twPct: twPctDisplay, lignin, cellulose, hemi, density, kappa, yieldPct, rangeSpread, riskLevel, riskColor, riskScore, isCalibrated, category };
+  return { twPct: twPctDisplay, lignin, cellulose, hemi, density, kappa, yieldPct, rangeSpread, riskLevel, riskColor, riskScore, isCalibrated, category, coverage };
 }
 
 function fmt(n, d=1){ return n.toFixed(d); }
@@ -882,10 +953,14 @@ function render(){
   const badgeText = document.getElementById('confidenceText');
   if (r.isCalibrated){
     badge.classList.add('calibrated');
-    badgeText.textContent = 'Calibrado - clone de referência (Pedro Kolton)';
+    badgeText.textContent = (clone === 'pedro')
+      ? 'Calibrado - clone de referência (Pedro Kolton)'
+      : `Calibrado - ${r.coverage}/3 categorias com dados de laboratório`;
   } else {
     badge.classList.remove('calibrated');
-    badgeText.textContent = 'Estimativa - clone sem calibração própria';
+    badgeText.textContent = r.coverage > 0
+      ? `Estimativa - apenas ${r.coverage}/3 categoria(s) calibrada(s) (insuficiente para interpolar)`
+      : 'Estimativa - clone sem calibração própria';
   }
 
   // tree tilt
@@ -1173,7 +1248,7 @@ document.getElementById('fieldTalhaoSelect').addEventListener('change', (e)=>{
 document.getElementById('addCloneBtn').addEventListener('click', ()=>{
   const name = document.getElementById('newCloneInput').value.trim();
   if (!name) return;
-  bank.clones[name] = bank.clones[name] || { talhoes:{} };
+  bank.clones[name] = bank.clones[name] || { talhoes:{}, calibration:{} };
   currentClone = name;
   saveBank();
   document.getElementById('newCloneInput').value='';
@@ -1274,25 +1349,97 @@ function renderBank(){
       talhaoNames.forEach(t=> allTrees = allTrees.concat(talhoes[t].trees));
       const counts = { SI:0, IM:0, IS:0 };
       allTrees.forEach(t=> counts[classifyAngle(t.angle)]++);
-      const confidence = allTrees.length >= 6 ? 'calibrated' : '';
-      const confidenceLabel = allTrees.length >= 6 ? 'Cobertura suficiente para calibração própria' : 'Ainda usando modelo genérico/de referência';
+
+      const calib = bank.clones[name].calibration || {};
+      const calibCount = ['SI','IM','IS'].filter(k=>calib[k]).length;
+      const confidence = calibCount >= 2 ? 'calibrated' : '';
+      const confidenceLabel = calibCount >= 3 ? 'Calibrado (3/3 categorias)'
+        : calibCount === 2 ? 'Calibrado (2/3 categorias)'
+        : calibCount === 1 ? '1/3 categoria - dados insuficientes'
+        : 'Sem dados de laboratório ainda';
+
+      const calibStatusHtml = ['SI','IM','IS'].map(k=>{
+        const has = !!calib[k];
+        return `<span class="cat-tag cat-${k}" style="opacity:${has?1:0.35}">${k} ${has?'✓':'sem dados'}</span>`;
+      }).join(' ');
+
       html += `
         <div class="clone-card">
           <div class="clone-head">
             <h3>Clone ${name}</h3>
             <span class="confidence-badge ${confidence}"><span class="dot"></span>${confidenceLabel}</span>
           </div>
-          <div class="clone-meta">${talhaoNames.length} talhão(ões) - ${allTrees.length} árvore(s) amostrada(s)</div>
+          <div class="clone-meta">${talhaoNames.length} talhão(ões) - ${allTrees.length} árvore(s) amostrada(s) em campo</div>
           <div class="coverage-row">
             <div class="coverage-pill cat-SI"><span class="n">${counts.SI}</span>SI (0-5°)</div>
             <div class="coverage-pill cat-IM"><span class="n">${counts.IM}</span>IM (5-15°)</div>
             <div class="coverage-pill cat-IS"><span class="n">${counts.IS}</span>IS (&gt;15°)</div>
           </div>
+          <div class="calib-status-row">
+            <span style="font-size:13px; color:var(--ink-soft);">Calibração de laboratório:</span>
+            ${calibStatusHtml}
+            <button class="btn-small" data-calib-clone="${name}" style="margin-left:auto;">Inserir dados de calibração</button>
+          </div>
         </div>`;
     });
   }
   list.innerHTML = html;
+  list.querySelectorAll('[data-calib-clone]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openCalibModal(btn.getAttribute('data-calib-clone')));
+  });
 }
+
+// ================= MODAL: INSERIR DADOS DE CALIBRAÇÃO =================
+let calibModalClone = null;
+function openCalibModal(cloneName){
+  calibModalClone = cloneName;
+  document.getElementById('calibModalSub').textContent = `Clone: ${cloneName}`;
+  ['calibDensity','calibKappa','calibYield','calibRejeitos','calibLignina','calibExtrativos','calibCinzas','calibN'].forEach(id=>{
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('calibCategory').value = 'SI';
+  document.getElementById('calibModal').classList.remove('hidden');
+}
+function closeCalibModal(){
+  document.getElementById('calibModal').classList.add('hidden');
+  calibModalClone = null;
+}
+document.getElementById('calibCancelBtn').addEventListener('click', closeCalibModal);
+document.getElementById('calibModal').addEventListener('click', (e)=>{
+  if (e.target.id === 'calibModal') closeCalibModal();
+});
+document.getElementById('calibSaveBtn').addEventListener('click', ()=>{
+  if (!calibModalClone) return;
+  const cat = document.getElementById('calibCategory').value;
+  const density = parseFloat(document.getElementById('calibDensity').value);
+  const kappa = parseFloat(document.getElementById('calibKappa').value);
+  const yieldPct = parseFloat(document.getElementById('calibYield').value);
+  const rejeitos = parseFloat(document.getElementById('calibRejeitos').value);
+  const lignina = parseFloat(document.getElementById('calibLignina').value);
+  const extrativos = parseFloat(document.getElementById('calibExtrativos').value);
+  const cinzas = parseFloat(document.getElementById('calibCinzas').value);
+  const n = parseInt(document.getElementById('calibN').value, 10);
+
+  if (isNaN(density) || isNaN(kappa) || isNaN(yieldPct) || isNaN(lignina)){
+    alert('Preencha ao menos densidade, kappa, rendimento depurado e lignina total - são os campos obrigatórios (*) para calibrar essa categoria.');
+    return;
+  }
+
+  bank.clones[calibModalClone].calibration = bank.clones[calibModalClone].calibration || {};
+  bank.clones[calibModalClone].calibration[cat] = {
+    density, kappa, yieldPct,
+    rejeitos: isNaN(rejeitos) ? null : rejeitos,
+    lignina,
+    extrativos: isNaN(extrativos) ? null : extrativos,
+    cinzas: isNaN(cinzas) ? null : cinzas,
+    n: isNaN(n) ? null : n
+  };
+  saveBank();
+  closeCalibModal();
+  renderBank();
+  populatePainelCloneSelect();
+  render();
+});
 
 // ================= EXPORT: REPORT (PRINT/PDF) & CSV =================
 function buildReportHTML(){
